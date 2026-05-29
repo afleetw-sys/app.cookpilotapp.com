@@ -274,20 +274,26 @@ ol {
 }
 
 .cp-topbar__signin {
-  min-height: 38px;
-  padding: 0 var(--cp-space-4);
+  /* Matches cp-button--primary cp-button--compact exactly */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--cp-ink);
   color: var(--cp-card);
   cursor: pointer;
-  font-weight: 700;
-  font-size: 0.9rem;
-  transition: opacity 120ms ease;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 120ms ease, opacity 120ms ease;
 }
 
 .cp-topbar__signin:hover {
-  opacity: 0.88;
+  transform: translateY(-1px);
 }
 
 .cp-rail__menu {
@@ -551,9 +557,11 @@ ol {
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
-    background-color 120ms ease;
+    background-color 120ms ease,
+    opacity 120ms ease;
   font-size: 0.9rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .cp-button:hover {
@@ -562,36 +570,55 @@ ol {
 
 .cp-button:disabled {
   cursor: default;
-  opacity: 0.64;
+  opacity: 0.5;
   transform: none;
 }
 
+/* ── Variants ────────────────────────────────────────── */
+
+/* Filled — primary action */
 .cp-button--primary {
   background: var(--cp-ink);
   color: var(--cp-card);
+  border: 0;
 }
 
+/* Outlined — secondary action */
 .cp-button--secondary {
-  background: var(--cp-card);
-  border: 1px solid var(--cp-line-strong);
+  background: transparent;
+  border: 1.5px solid var(--cp-line-strong);
   color: var(--cp-ink);
 }
 
+/* Icon — ghost tap target, no fill or outline */
 .cp-button--icon {
   width: 40px;
   min-width: 40px;
   padding: 0;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--cp-card) 92%, transparent);
-  border: 1px solid var(--cp-line);
+  border-radius: 12px;
+  background: transparent;
+  border: 0;
   color: var(--cp-ink-soft);
 }
+
+.cp-button--icon:hover {
+  background: rgba(127, 127, 127, 0.1);
+  transform: none;
+}
+
+/* ── Sizes ───────────────────────────────────────────── */
 
 .cp-button--compact {
   min-height: 34px;
   padding: 0 14px;
   font-size: 0.85rem;
   border-radius: 12px;
+}
+
+.cp-button--compact.cp-button--icon {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
 }
 
 .cp-field {
@@ -856,16 +883,23 @@ ol {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
+  min-height: 40px;
   padding: 0 16px;
-  border: 1px solid var(--cp-line);
+  border: 1.5px solid var(--cp-line-strong);
   border-radius: 999px;
-  background: var(--cp-card);
+  background: transparent;
   color: var(--cp-ink);
   cursor: pointer;
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.cp-filter-menu__button:hover {
+  transform: translateY(-1px);
+  background: rgba(127, 127, 127, 0.06);
 }
 
 .cp-filter-menu__button strong {
@@ -1666,25 +1700,29 @@ html[data-theme="dark"] .cp-detail__tag::before {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 36px;
+  min-height: 34px;
   padding: 0 13px;
-  border: 1px solid var(--cp-line);
+  border: 1.5px solid var(--cp-line-strong);
   border-radius: 999px;
-  background: rgba(127, 127, 127, 0.08);
+  background: transparent;
   color: var(--cp-ink);
   cursor: pointer;
   font: inherit;
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.cp-tag-suggestion:hover {
+  transform: translateY(-1px);
+  background: rgba(127, 127, 127, 0.06);
 }
 
 .cp-tag-suggestion svg {
   color: color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 78%, #9fe34e);
 }
 
-.cp-tag-suggestion:hover {
-  background: var(--cp-card);
-}
 
 .cp-detail__hero-actions {
   display: flex;
@@ -1985,15 +2023,20 @@ html[data-theme="dark"] .cp-detail__section-card {
   gap: 8px;
   height: 28px;
   padding: 0 12px;
-  border: 1px solid var(--cp-line);
+  border: 1.5px solid var(--cp-line-strong);
   border-radius: 999px;
-  background: var(--cp-toolbar-control-bg, rgba(127, 127, 127, 0.08));
+  background: transparent;
   color: var(--cp-ink);
   cursor: pointer;
   font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1;
+  transition: background-color 120ms ease;
+}
+
+.cp-ingredients-header__measurement-button:hover {
+  background: rgba(127, 127, 127, 0.06);
 }
 
 .cp-ingredients-header__measurement-menu {
@@ -2177,11 +2220,12 @@ html[data-theme="dark"] .cp-edit-row__input {
   width: 40px;
   min-width: 40px;
   height: 40px;
-  border: 1px solid var(--cp-line);
-  border-radius: 14px;
-  background: rgba(127, 127, 127, 0.08);
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   color: var(--cp-ink-soft);
   cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .cp-edit-row__delete:hover {
@@ -2654,8 +2698,8 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   color: white;
   cursor: pointer;
   font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .cp-image-picker__loading {
