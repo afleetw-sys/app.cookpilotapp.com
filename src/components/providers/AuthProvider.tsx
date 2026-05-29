@@ -292,12 +292,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (cancelled) return;
               setUser(anonUser);
               setStatus("anonymous");
+              // Firestore sync is best-effort. If it fails (e.g. App Check not yet
+              // configured, or network hiccup) we intentionally keep the auth user
+              // alive so Firebase can restore it from localStorage on next refresh.
+              // Deleting the auth user here caused an infinite cycle: Firestore
+              // failure → delete → invalid token in localStorage → onAuthStateChanged(null)
+              // → new anonymous user → repeat forever.
               try {
                 await syncAnonymousUserDocument(anonUser);
                 await updateUserSessionMetadata(anonUser);
               } catch (docError) {
-                await anonUser.delete();
-                throw docError;
+                console.warn("anonymous user document sync failed (non-fatal):", docError);
               }
             })().finally(() => {
               pendingAnonSignIn = null;
