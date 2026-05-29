@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -50,4 +50,10 @@ export const app =
       });
 
 export const auth = getAuth(app);
-export const authReady: Promise<void> = setPersistence(auth, browserLocalPersistence);
+// authReady resolves once Firebase has finished loading the persisted user from
+// storage. Using auth.authStateReady() (instead of the redundant setPersistence call
+// that was here before) avoids a race where setPersistence resets the persistence
+// layer mid-startup, causing onAuthStateChanged to fire null before the stored
+// anonymous user can be rehydrated — which was creating a new anonymous user on
+// every page refresh.
+export const authReady: Promise<void> = auth.authStateReady();
