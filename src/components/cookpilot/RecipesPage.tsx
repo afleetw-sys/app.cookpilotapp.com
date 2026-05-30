@@ -109,15 +109,18 @@ function saveStoredBrowseState(update: StoredBrowseState) {
 function EmptyRecipeState({ onImport }: { onImport: () => void }) {
   return (
     <div className="cp-empty-state">
-      <div className="cp-empty-state__copy">
-        <h2>Import your first recipe</h2>
-        <p>Paste any recipe link and we&apos;ll turn it into an editable recipe.</p>
+      <div className="cp-recipe-card cp-empty-state__card">
+        <span aria-hidden="true" className="cp-recipe-card__tape cp-recipe-card__tape--2" />
+        <div className="cp-empty-state__copy">
+          <h2>Import your first recipe</h2>
+          <p>Paste any recipe link and we&apos;ll turn it into an editable recipe.</p>
+        </div>
+        <Button className="cp-empty-state__button" onClick={onImport}>
+          <Plus size={20} />
+          New recipe
+        </Button>
+        <p className="cp-empty-state__meta">Swap ingredients • Refine recipes • Make it yours</p>
       </div>
-      <Button className="cp-empty-state__button" onClick={onImport}>
-        <Plus size={20} />
-        New recipe
-      </Button>
-      <p className="cp-empty-state__meta">Swap ingredients • Refine recipes • Make it yours</p>
     </div>
   );
 }

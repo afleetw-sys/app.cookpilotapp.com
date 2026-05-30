@@ -146,9 +146,16 @@ ol {
 }
 
 .cp-page--centered {
-  display: grid;
-  place-items: center;
-  padding: var(--cp-space-7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(32px, 6vw, 80px) var(--cp-space-5);
+  gap: var(--cp-space-5);
+}
+
+.cp-page--centered > * {
+  width: min(100%, 420px);
 }
 
 .cp-app-shell {
@@ -1344,11 +1351,25 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--cp-space-5);
-  width: min(100%, 560px);
+  width: min(100%, 320px);
   min-height: 100%;
-  padding: clamp(32px, 6vw, 56px);
   text-align: center;
+}
+
+/* The card reuses cp-recipe-card but overrides interactive defaults */
+.cp-empty-state__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cp-space-5);
+  padding: clamp(28px, 5vw, 40px) clamp(20px, 4vw, 32px);
+  cursor: default;
+  margin: 20px 0 16px;
+  text-align: center;
+}
+
+.cp-empty-state__card:hover {
+  transform: none;
 }
 
 .cp-empty-state__icon {
@@ -1359,19 +1380,20 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--cp-space-2);
   text-align: center;
 }
 
 .cp-empty-state__copy h2 {
-  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
   font-weight: 600;
   letter-spacing: -0.04em;
 }
 
 .cp-empty-state__copy p {
-  max-width: 36ch;
+  max-width: 28ch;
   color: var(--cp-ink-soft);
-  font-size: clamp(0.96rem, 1.5vw, 1.08rem);
+  font-size: 0.96rem;
   line-height: 1.5;
 }
 
@@ -2863,8 +2885,6 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   .cp-board__title-row .cp-board__new-recipe {
     width: auto;
     flex-shrink: 0;
-    min-height: 38px;
-    padding: 0 14px;
   }
 
   .cp-board__new-recipe-label--full {
@@ -2998,12 +3018,7 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   }
 
   .cp-empty-state {
-    width: min(100%, 440px);
-    padding: 34px 18px;
-  }
-
-  .cp-empty-state__copy p {
-    max-width: 34ch;
+    width: min(100%, 300px);
   }
 
   .cp-sort-select {
