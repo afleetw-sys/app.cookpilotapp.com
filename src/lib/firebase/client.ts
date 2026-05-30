@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, initializeAuth, indexedDBLocalPersistence } from "firebase/auth";
+import { getAuth, initializeAuth, indexedDBLocalPersistence, browserPopupRedirectResolver } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -56,7 +56,10 @@ export const app =
 export const auth = (() => {
   if (typeof window === "undefined") return getAuth(app);
   try {
-    return initializeAuth(app, { persistence: indexedDBLocalPersistence });
+    return initializeAuth(app, {
+      persistence: indexedDBLocalPersistence,
+      popupRedirectResolver: browserPopupRedirectResolver,
+    });
   } catch {
     // initializeAuth throws if Auth was already initialized for this app
     // (e.g. hot-module replacement). getAuth returns the existing instance.
