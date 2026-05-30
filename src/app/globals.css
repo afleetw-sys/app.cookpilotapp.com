@@ -2628,6 +2628,166 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   animation: cp-spin 1s linear infinite;
 }
 
+/* ── AI Usage Banner ──────────────────────────────────────────────────────── */
+
+.cp-ai-usage-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--cp-space-3);
+  padding: var(--cp-space-3) var(--cp-space-4);
+  background: color-mix(in srgb, var(--cp-blue) 8%, var(--cp-card));
+  border-radius: var(--cp-radius-md, 10px);
+}
+
+.cp-ai-usage-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cp-ai-usage-banner__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cp-ink);
+  line-height: 1.3;
+}
+
+.cp-ai-usage-banner__subtitle {
+  font-size: 0.6875rem;
+  color: var(--cp-ink-soft);
+  line-height: 1.3;
+}
+
+.cp-ai-usage-banner__upgrade {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cp-space-1);
+  flex: 0 0 auto;
+  padding: 0 var(--cp-space-3);
+  height: 32px;
+  background: var(--cp-ink);
+  color: var(--cp-page);
+  border: none;
+  border-radius: var(--cp-radius-md, 10px);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.cp-ai-usage-banner__upgrade:hover {
+  opacity: 0.82;
+}
+
+/* ── Paywall Dialog ───────────────────────────────────────────────────────── */
+
+.cp-paywall-card {
+  position: relative;
+  background: var(--cp-card);
+  border-radius: 18px;
+  padding: var(--cp-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-5);
+  width: min(100%, 420px);
+}
+
+.cp-paywall-card__close {
+  position: absolute;
+  top: var(--cp-space-4);
+  right: var(--cp-space-4);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--cp-ink) 8%, transparent);
+  border: none;
+  border-radius: 50%;
+  color: var(--cp-ink-soft);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cp-paywall-card__close:hover {
+  background: color-mix(in srgb, var(--cp-ink) 14%, transparent);
+}
+
+.cp-paywall-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-2);
+}
+
+.cp-paywall-card__icon {
+  color: var(--cp-blue);
+}
+
+.cp-paywall-card__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--cp-ink);
+  margin: 0;
+}
+
+.cp-paywall-card__subtitle {
+  font-size: 0.9375rem;
+  color: var(--cp-ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cp-paywall-benefits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-3);
+}
+
+.cp-paywall-benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cp-space-3);
+}
+
+.cp-paywall-benefit__icon {
+  color: var(--cp-blue);
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.cp-paywall-benefit__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cp-ink);
+  margin: 0 0 2px;
+}
+
+.cp-paywall-benefit__desc {
+  font-size: 0.8125rem;
+  color: var(--cp-ink-soft);
+  margin: 0;
+}
+
+.cp-paywall-card__cta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-3);
+}
+
+.cp-paywall-card__platform-note {
+  font-size: 0.8125rem;
+  color: var(--cp-ink-soft);
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+}
+
 .cp-loading-spinner {
   display: inline-grid;
   place-items: center;

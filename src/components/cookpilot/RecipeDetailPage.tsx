@@ -18,6 +18,13 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useSubscription } from "@/components/providers/SubscriptionProvider";
+import { PaywallDialog } from "@/components/cookpilot/PaywallDialog";
+import {
+  loadUsageInfo,
+  recordEditUsage,
+  type UsageInfo,
+} from "@/lib/cookpilot/usageTracking";
 import { AIEditSection } from "@/components/cookpilot/AIEditSection";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -354,6 +361,7 @@ function RecipeTagChip({
 export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: string; isDraft?: boolean }) {
   const router = useRouter();
   const { user, status } = useAuth();
+  const { isSubscribed, refreshSubscriptionStatus } = useSubscription();
   const [selectedRecipe, setSelectedRecipe] = useState<SavedRecipe | null>(null);
   const [loadingRecipeDetail, setLoadingRecipeDetail] = useState(true);
   const [showDetailSpinner, setShowDetailSpinner] = useState(false);
@@ -392,6 +400,14 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const [saveEditError, setSaveEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  // Load usage info whenever the user or subscription status changes.
+  useEffect(() => {
+    const userId = user && !user.isAnonymous ? user.uid : null;
+    void loadUsageInfo(userId, isSubscribed).then(setUsageInfo);
+  }, [user, isSubscribed]);
 
   useEffect(() => {
     const t = setTimeout(
@@ -658,7 +674,15 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   async function handleEditRecipe(promptOverride?: string) {
     const prompt = (promptOverride ?? editState.prompt).trim();
     if (!user || !selectedRecipe || !prompt) return;
+
+    // Check usage gate before proceeding.
+    if (!isSubscribed && (usageInfo?.remaining ?? 1) <= 0) {
+      setShowPaywall(true);
+      return;
+    }
+
     const userId = user.uid;
+    const storageUserId = user.isAnonymous ? null : userId;
     const baseRecipeForEdit = isEditingRecipe && editDraft ? editDraft.recipe : selectedRecipe.recipe;
 
     setEditState((current) => ({
@@ -686,6 +710,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         }));
         return;
       }
+
+      // Record usage after a successful (non-refused) edit.
+      void recordEditUsage(storageUserId, isSubscribed).then(setUsageInfo);
 
       if (isEditingRecipe && editDraft) {
         setEditDraft((current) =>
@@ -1655,7 +1682,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           editState={editState}
           onApplyPrompt={(prompt) => void handleEditRecipe(prompt)}
           onPromptChange={(prompt) => setEditState((current) => ({ ...current, prompt }))}
+          onUpgradeTapped={() => setShowPaywall(true)}
           suggestions={aiEditSuggestions}
+          usageInfo={usageInfo}
         />
       ) : null}
 
@@ -1699,6 +1728,15 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             </Button>
           )}
         </section>
+      ) : null}
+
+      {showPaywall ? (
+        <PaywallDialog
+          onClose={() => {
+            setShowPaywall(false);
+            void refreshSubscriptionStatus();
+          }}
+        />
       ) : null}
     </div>
   );

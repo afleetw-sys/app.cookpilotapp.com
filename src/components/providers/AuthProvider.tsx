@@ -270,9 +270,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (restoredUser) {
           setUser(restoredUser);
           setStatus(restoredUser.isAnonymous ? "anonymous" : "authenticated");
-          if (!restoredUser.isAnonymous) {
+          if (restoredUser.isAnonymous) {
+            rememberAnonymousUid(restoredUser.uid);
+          } else {
             rememberAuthenticatedSession(restoredUser);
           }
+          handlerRunning = false;
           return;
         }
 
@@ -305,7 +308,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (recovered) {
             setUser(recovered);
             setStatus(recovered.isAnonymous ? "anonymous" : "authenticated");
-            if (!recovered.isAnonymous) rememberAuthenticatedSession(recovered);
+            if (recovered.isAnonymous) {
+              rememberAnonymousUid(recovered.uid);
+            } else {
+              rememberAuthenticatedSession(recovered);
+            }
             handlerRunning = false;
             return;
           }
@@ -343,7 +350,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(nextUser);
       setStatus(nextUser.isAnonymous ? "anonymous" : "authenticated");
-      if (!nextUser.isAnonymous) {
+      if (nextUser.isAnonymous) {
+        rememberAnonymousUid(nextUser.uid);
+      } else {
         rememberAuthenticatedSession(nextUser);
         forgetAnonymousUid();
         // Only track lastActive for real authenticated users — anonymous users

@@ -5,6 +5,8 @@ import type { FormEvent } from "react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StateBlock } from "@/components/ui/StateBlock";
 import type { EditRecipeResponse } from "@/lib/cookpilot/types";
+import type { UsageInfo } from "@/lib/cookpilot/usageTracking";
+import { formatResetDate } from "@/lib/cookpilot/usageTracking";
 
 export type AIEditSectionState = {
   prompt: string;
@@ -18,18 +20,25 @@ export function AIEditSection({
   editState,
   onPromptChange,
   onApplyPrompt,
+  onUpgradeTapped,
   suggestions,
+  usageInfo,
 }: {
   editState: AIEditSectionState;
   onPromptChange: (prompt: string) => void;
   onApplyPrompt: (prompt?: string) => void;
+  onUpgradeTapped: () => void;
   suggestions: string[];
+  usageInfo: UsageInfo | null;
 }) {
   const trimmedPrompt = editState.prompt.trim();
+  const isOutOfEdits =
+    usageInfo !== null && !usageInfo.isSubscribed && (usageInfo.remaining ?? 0) <= 0;
+  const isDisabled = editState.loading || isOutOfEdits;
 
   function submitPrompt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!trimmedPrompt || editState.loading) return;
+    if (!trimmedPrompt || isDisabled) return;
     onApplyPrompt(trimmedPrompt);
   }
 
@@ -39,20 +48,52 @@ export function AIEditSection({
         <Sparkle size={20} />
       </SectionHeader>
 
+      {/* Usage banner — shown when not subscribed */}
+      {usageInfo && !usageInfo.isSubscribed && usageInfo.remaining !== null && usageInfo.total !== null ? (
+        <div className="cp-ai-usage-banner">
+          <div className="cp-ai-usage-banner__text">
+            <span className="cp-ai-usage-banner__title">
+              {usageInfo.remaining > 0
+                ? `${usageInfo.remaining} of ${usageInfo.total} free AI edits left`
+                : "Free limit reached"}
+            </span>
+            {usageInfo.resetDate ? (
+              <span className="cp-ai-usage-banner__subtitle">
+                {usageInfo.remaining > 0
+                  ? `Resets ${formatResetDate(usageInfo.resetDate)}`
+                  : `More edits ${formatResetDate(usageInfo.resetDate)}`}
+              </span>
+            ) : null}
+          </div>
+          <button
+            className="cp-ai-usage-banner__upgrade"
+            onClick={onUpgradeTapped}
+            type="button"
+          >
+            <Sparkle size={13} weight="fill" />
+            Go unlimited
+          </button>
+        </div>
+      ) : null}
+
       <form className="cp-ai-edit-form" onSubmit={submitPrompt}>
         <textarea
           aria-label="What should change?"
           className="cp-ai-edit-form__input"
-          disabled={editState.loading}
+          disabled={isDisabled}
           onChange={(event) => onPromptChange(event.target.value)}
-          placeholder="Make this dairy-free, or halve the garlic and add more lemon."
+          placeholder={
+            isOutOfEdits
+              ? "Upgrade to keep editing with AI."
+              : "Make this dairy-free, or halve the garlic and add more lemon."
+          }
           rows={3}
           value={editState.prompt}
         />
         <button
           aria-label="Apply AI edit"
           className="cp-ai-edit-form__send"
-          disabled={editState.loading || !trimmedPrompt}
+          disabled={isDisabled || !trimmedPrompt}
           type="submit"
         >
           {editState.loading ? (
@@ -68,7 +109,7 @@ export function AIEditSection({
           {suggestions.map((suggestion) => (
             <button
               className="cp-ai-edit-suggestion"
-              disabled={editState.loading}
+              disabled={isDisabled}
               key={suggestion}
               onClick={() => onApplyPrompt(suggestion)}
               type="button"
