@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/db";
 
 export const MONTHLY_FREE_EDIT_LIMIT = 3;
@@ -133,6 +133,43 @@ export async function loadUsageInfo(
     resetDate: getNextResetDate(),
     isSubscribed: false,
   };
+}
+
+/**
+ * Subscribe to real-time usage updates from Firestore for a signed-in user.
+ * Fires immediately with current data, then again whenever iOS/web/Mac writes a new count.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToUsageInfo(
+  userId: string,
+  isSubscribed: boolean,
+  onUpdate: (info: UsageInfo) => void,
+): () => void {
+  if (isSubscribed) {
+    onUpdate({ remaining: null, total: null, resetDate: null, isSubscribed: true });
+    return () => {};
+  }
+
+  const currentMonthKey = getCurrentMonthKey();
+
+  return onSnapshot(doc(db, "users", userId), (snapshot) => {
+    const data = snapshot.exists() ? (snapshot.data() as Partial<FirestoreUsage>) : {};
+    let count = data.monthlyEditCount ?? 0;
+    const monthKey = data.monthlyEditMonthKey ?? currentMonthKey;
+
+    // If the stored month is stale, treat count as 0 and reset in Firestore.
+    if (monthKey !== currentMonthKey) {
+      count = 0;
+      void saveUsageToFirestore(userId, 0, currentMonthKey);
+    }
+
+    onUpdate({
+      remaining: Math.max(0, MONTHLY_FREE_EDIT_LIMIT - count),
+      total: MONTHLY_FREE_EDIT_LIMIT,
+      resetDate: getNextResetDate(),
+      isSubscribed: false,
+    });
+  });
 }
 
 /**

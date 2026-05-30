@@ -23,6 +23,7 @@ import { PaywallDialog } from "@/components/cookpilot/PaywallDialog";
 import {
   loadUsageInfo,
   recordEditUsage,
+  subscribeToUsageInfo,
   type UsageInfo,
 } from "@/lib/cookpilot/usageTracking";
 import { AIEditSection } from "@/components/cookpilot/AIEditSection";
@@ -403,10 +404,18 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
-  // Load usage info whenever the user or subscription status changes.
+  // Subscribe to real-time usage updates — fires whenever any platform writes a new count.
+  // Falls back to a one-shot load for anonymous users (no Firestore listener needed).
   useEffect(() => {
-    const userId = user && !user.isAnonymous ? user.uid : null;
-    void loadUsageInfo(userId, isSubscribed).then(setUsageInfo);
+    if (!user) return;
+
+    if (user.isAnonymous) {
+      void loadUsageInfo(null, isSubscribed).then(setUsageInfo);
+      return;
+    }
+
+    const unsubscribe = subscribeToUsageInfo(user.uid, isSubscribed, setUsageInfo);
+    return unsubscribe;
   }, [user, isSubscribed]);
 
   useEffect(() => {
