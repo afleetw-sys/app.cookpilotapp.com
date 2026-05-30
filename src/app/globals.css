@@ -1338,10 +1338,35 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   background: rgba(197, 63, 63, 0.06);
 }
 
+/* Make the app shell a flex column so the empty state can fill remaining
+   height without scrolling. Mirrors the same pattern used for .cp-detail--page. */
+.cp-app-shell:has(.cp-detail--empty) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.cp-app-shell:has(.cp-detail--empty) .cp-app-shell__topbar {
+  flex-shrink: 0;
+}
+
+.cp-app-shell:has(.cp-detail--empty) .cp-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+}
+
+.cp-app-shell:has(.cp-detail--empty) .cp-shell__main {
+  flex: 1;
+  display: flex;
+}
+
 .cp-detail--empty {
-  display: grid;
-  place-items: center;
-  min-height: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   padding: 0;
 }
@@ -1352,7 +1377,6 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   align-items: center;
   justify-content: center;
   width: min(100%, 320px);
-  min-height: 100%;
   text-align: center;
 }
 
@@ -1398,6 +1422,7 @@ html[data-theme="dark"] .cp-recipe-card__tape {
 }
 
 .cp-empty-state__button {
+  width: fit-content;
   min-width: 160px;
   box-shadow: none;
 }
