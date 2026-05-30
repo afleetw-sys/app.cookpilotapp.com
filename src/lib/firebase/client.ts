@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, initializeAuth, indexedDBLocalPersistence } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -49,11 +49,19 @@ export const app =
         appId: resolveEnv(firebaseConfig.appId, "NEXT_PUBLIC_FIREBASE_APP_ID"),
       });
 
-export const auth = getAuth(app);
-// authReady resolves once Firebase has finished loading the persisted user from
-// storage. Using auth.authStateReady() (instead of the redundant setPersistence call
-// that was here before) avoids a race where setPersistence resets the persistence
-// layer mid-startup, causing onAuthStateChanged to fire null before the stored
-// anonymous user can be rehydrated — which was creating a new anonymous user on
-// every page refresh.
+// Use IndexedDB persistence on the client — more reliable than localStorage.
+// IndexedDB survives "Clear cookies" (only "Clear all site data" removes it),
+// has a much larger storage quota, and handles concurrent reads better.
+// Falls back to getAuth (in-memory) on the server where IndexedDB is unavailable.
+export const auth = (() => {
+  if (typeof window === "undefined") return getAuth(app);
+  try {
+    return initializeAuth(app, { persistence: indexedDBLocalPersistence });
+  } catch {
+    // initializeAuth throws if Auth was already initialized for this app
+    // (e.g. hot-module replacement). getAuth returns the existing instance.
+    return getAuth(app);
+  }
+})();
+
 export const authReady: Promise<void> = auth.authStateReady();

@@ -47,11 +47,6 @@ type AuthContextValue = {
   deleteCurrentUser: (password?: string) => Promise<void>;
 };
 
-type UserDocumentSync = {
-  uid: string;
-  promise: Promise<void>;
-};
-
 export type EmailAuthStepResult =
   | { kind: "passwordSignIn" }
   | { kind: "passwordSignUp" }
@@ -67,11 +62,10 @@ export type EmailAuthSubmitParams = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTHENTICATED_SESSION_MARKER_KEY = "cookpilot.lastAuthenticatedSession";
+const ANONYMOUS_UID_KEY = "cookpilot.anonymousUid";
 const AUTH_RESTORE_GRACE_MS = 2500;
 
-// Module-level guard: deduplicates concurrent signInAnonymously() calls that arise
-// when React Strict Mode mounts the provider twice and both subscriptions see null
-// before the first sign-in resolves.
+// Deduplicates concurrent signInAnonymously() calls (e.g. React Strict Mode double-mount).
 let pendingAnonSignIn: Promise<void> | null = null;
 
 const googleProvider = new GoogleAuthProvider();
@@ -118,6 +112,18 @@ function hasAuthenticatedSessionMarker() {
   } catch {
     return false;
   }
+}
+
+function rememberAnonymousUid(uid: string) {
+  try { window.localStorage.setItem(ANONYMOUS_UID_KEY, uid); } catch { /* ignore */ }
+}
+
+function forgetAnonymousUid() {
+  try { window.localStorage.removeItem(ANONYMOUS_UID_KEY); } catch { /* ignore */ }
+}
+
+function getStoredAnonymousUid(): string | null {
+  try { return window.localStorage.getItem(ANONYMOUS_UID_KEY); } catch { return null; }
 }
 
 function wait(ms: number) {
@@ -185,21 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [isWorking, setIsWorking] = useState(false);
-  const anonymousUserDocumentSyncRef = useRef<UserDocumentSync | null>(null);
   const mergeAnonymousPromiseRef = useRef<Promise<void> | null>(null);
-
-  const syncAnonymousUserDocument = useCallback((userToSync: User) => {
-    const promise = ensureUserDocument(userToSync, "anonymous");
-    anonymousUserDocumentSyncRef.current = { uid: userToSync.uid, promise };
-    return promise;
-  }, []);
-
-  const waitForAnonymousUserDocument = useCallback(async (anonymousUid: string) => {
-    const sync = anonymousUserDocumentSyncRef.current;
-    if (sync?.uid === anonymousUid) {
-      await sync.promise;
-    }
-  }, []);
 
   const finalizeAuthenticatedUser = useCallback(async (userToFinalize: User, provider: string) => {
     await ensureUserDocument(userToFinalize, provider);
@@ -221,7 +213,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const mergePromise = (async () => {
-      await waitForAnonymousUserDocument(anonymousUid);
+      // No need to wait for anonymous user document — we intentionally don't
+      // create Firestore documents for anonymous users. The merge Cloud Function
+      // copies their recipes subcollection directly without needing a user doc.
       const { mergeAnonymousAccount } = await import("@/lib/cookpilot/functions");
       await mergeAnonymousAccount(anonymousUid);
       await auth.currentUser?.reload();
@@ -245,25 +239,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         mergeAnonymousPromiseRef.current = null;
       }
     }
-  }, [waitForAnonymousUserDocument]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
+    // Prevents overlapping async handler executions — Firebase fires
+    // onAuthStateChanged on token refresh (every hour), page focus, etc.
+    // Without this, two concurrent handlers can both enter the null branch.
+    let handlerRunning = false;
 
-    // Register onAuthStateChanged immediately — do NOT await authReady first.
-    //
-    // The previous approach awaited authReady (= auth.authStateReady() called
-    // at module-init time) before registering the listener. The problem: Firebase
-    // may begin loading the persisted user from localStorage *after* the module
-    // initialises, so authStateReady() resolved before the stored user was
-    // available, causing the listener to fire with null and create a fresh
-    // anonymous user on every page load.
-    //
-    // By registering immediately and awaiting auth.authStateReady() *inside*
-    // the null branch, we wait for persistence to actually finish loading
-    // before giving up and creating a new anonymous user.
     const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
       if (cancelled) return;
+      if (handlerRunning) return;
+      handlerRunning = true;
 
       if (!nextUser) {
         // Immediately signal "loading" so the UI stops showing stale authenticated
@@ -305,20 +293,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           forgetAuthenticatedSession();
         }
 
+        // If we have a stored anonymous UID but Firebase says no user, wait a
+        // bit before giving up — this can happen transiently during token
+        // validation on a slow network. Avoids silently creating a new anon
+        // user and losing all the previous session's imported recipes.
+        const storedAnonUid = getStoredAnonymousUid();
+        if (storedAnonUid) {
+          await wait(1500);
+          if (cancelled) return;
+          const recovered = auth.currentUser;
+          if (recovered) {
+            setUser(recovered);
+            setStatus(recovered.isAnonymous ? "anonymous" : "authenticated");
+            if (!recovered.isAnonymous) rememberAuthenticatedSession(recovered);
+            handlerRunning = false;
+            return;
+          }
+          // Still no user — the anonymous account is truly gone.
+          forgetAnonymousUid();
+        }
+
         if (!pendingAnonSignIn) {
           pendingAnonSignIn = (async () => {
             const { user: anonUser } = await signInAnonymously(auth);
             if (cancelled) return;
+            rememberAnonymousUid(anonUser.uid);
             setUser(anonUser);
             setStatus("anonymous");
-            // Firestore sync is best-effort — never delete the auth user on
-            // failure or it causes an infinite new-user-on-every-refresh cycle.
-            try {
-              await syncAnonymousUserDocument(anonUser);
-              await updateUserSessionMetadata(anonUser);
-            } catch (docError) {
-              console.warn("anonymous user document sync failed (non-fatal):", docError);
-            }
+            // No Firestore document created for anonymous users — doing so eagerly
+            // was the root cause of the infinite new-user-on-every-refresh cycle.
+            // The document is created by ensureUserDocument when they sign in.
           })().finally(() => {
             pendingAnonSignIn = null;
           });
@@ -333,6 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setStatus("loading");
           }
         }
+        handlerRunning = false;
         return;
       }
 
@@ -340,15 +345,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(nextUser.isAnonymous ? "anonymous" : "authenticated");
       if (!nextUser.isAnonymous) {
         rememberAuthenticatedSession(nextUser);
+        forgetAnonymousUid();
+        // Only track lastActive for real authenticated users — anonymous users
+        // have no persistent identity worth session-frequency tracking, and
+        // calling this on anon users caused spurious Firestore writes before
+        // their user document was guaranteed to exist.
+        void updateUserSessionMetadata(nextUser);
       }
-      void updateUserSessionMetadata(nextUser);
+      handlerRunning = false;
     });
 
     return () => {
       cancelled = true;
       unsubscribe();
     };
-  }, [syncAnonymousUserDocument]);
+  }, []);
 
   const signInWithGoogleAction = useCallback(async () => {
     setIsWorking(true);
@@ -480,6 +491,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       clearRecipesBrowseSessionCache();
       forgetAuthenticatedSession();
+      forgetAnonymousUid();
       await signOut(auth);
     } finally {
       setIsWorking(false);
