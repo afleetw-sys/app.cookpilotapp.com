@@ -28,7 +28,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { auth, authReady } from "@/lib/firebase/client";
+import { auth } from "@/lib/firebase/client";
 // Side-effect import: initialises Firebase App Check before any Storage operation.
 // App Check is enforced on this project's Storage bucket; without it uploads return 401.
 import "@/lib/firebase/appCheck";
@@ -248,95 +248,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [waitForAnonymousUserDocument]);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
     let cancelled = false;
 
-    void authReady.then(() => {
-      unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+    // Register onAuthStateChanged immediately — do NOT await authReady first.
+    //
+    // The previous approach awaited authReady (= auth.authStateReady() called
+    // at module-init time) before registering the listener. The problem: Firebase
+    // may begin loading the persisted user from localStorage *after* the module
+    // initialises, so authStateReady() resolved before the stored user was
+    // available, causing the listener to fire with null and create a fresh
+    // anonymous user on every page load.
+    //
+    // By registering immediately and awaiting auth.authStateReady() *inside*
+    // the null branch, we wait for persistence to actually finish loading
+    // before giving up and creating a new anonymous user.
+    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+      if (cancelled) return;
+
+      if (!nextUser) {
+        // Wait for Firebase to finish loading the stored user from localStorage.
+        await auth.authStateReady();
         if (cancelled) return;
 
-        if (!nextUser) {
-          await auth.authStateReady();
-          if (cancelled) return;
-
-          const restoredUser = auth.currentUser;
-          if (restoredUser) {
-            setUser(restoredUser);
-            setStatus(restoredUser.isAnonymous ? "anonymous" : "authenticated");
-            if (!restoredUser.isAnonymous) {
-              rememberAuthenticatedSession(restoredUser);
-            }
-            return;
-          }
-
-          if (hasAuthenticatedSessionMarker()) {
-            await wait(AUTH_RESTORE_GRACE_MS);
-            if (cancelled) return;
-
-            const delayedRestoredUser = auth.currentUser;
-            if (delayedRestoredUser) {
-              setUser(delayedRestoredUser);
-              setStatus(delayedRestoredUser.isAnonymous ? "anonymous" : "authenticated");
-              if (!delayedRestoredUser.isAnonymous) {
-                rememberAuthenticatedSession(delayedRestoredUser);
-              }
-              return;
-            }
-
-            forgetAuthenticatedSession();
-          }
-
-          if (!pendingAnonSignIn) {
-            pendingAnonSignIn = (async () => {
-              const { user: anonUser } = await signInAnonymously(auth);
-              if (cancelled) return;
-              setUser(anonUser);
-              setStatus("anonymous");
-              // Firestore sync is best-effort. If it fails (e.g. App Check not yet
-              // configured, or network hiccup) we intentionally keep the auth user
-              // alive so Firebase can restore it from localStorage on next refresh.
-              // Deleting the auth user here caused an infinite cycle: Firestore
-              // failure → delete → invalid token in localStorage → onAuthStateChanged(null)
-              // → new anonymous user → repeat forever.
-              try {
-                await syncAnonymousUserDocument(anonUser);
-                await updateUserSessionMetadata(anonUser);
-              } catch (docError) {
-                console.warn("anonymous user document sync failed (non-fatal):", docError);
-              }
-            })().finally(() => {
-              pendingAnonSignIn = null;
-            });
-          }
-
-          try {
-            await pendingAnonSignIn;
-          } catch (error) {
-            console.error("anonymous bootstrap failed", error);
-            setUser(null);
-            setStatus("loading");
+        const restoredUser = auth.currentUser;
+        if (restoredUser) {
+          setUser(restoredUser);
+          setStatus(restoredUser.isAnonymous ? "anonymous" : "authenticated");
+          if (!restoredUser.isAnonymous) {
+            rememberAuthenticatedSession(restoredUser);
           }
           return;
         }
 
-        setUser(nextUser);
-        setStatus(nextUser.isAnonymous ? "anonymous" : "authenticated");
-        if (!nextUser.isAnonymous) {
-          rememberAuthenticatedSession(nextUser);
+        if (hasAuthenticatedSessionMarker()) {
+          await wait(AUTH_RESTORE_GRACE_MS);
+          if (cancelled) return;
+
+          const delayedRestoredUser = auth.currentUser;
+          if (delayedRestoredUser) {
+            setUser(delayedRestoredUser);
+            setStatus(delayedRestoredUser.isAnonymous ? "anonymous" : "authenticated");
+            if (!delayedRestoredUser.isAnonymous) {
+              rememberAuthenticatedSession(delayedRestoredUser);
+            }
+            return;
+          }
+
+          forgetAuthenticatedSession();
         }
-        void updateUserSessionMetadata(nextUser);
-      });
-    }).catch((error) => {
-      console.error("auth bootstrap failed", error);
-      if (!cancelled) {
-        setUser(null);
-        setStatus("loading");
+
+        if (!pendingAnonSignIn) {
+          pendingAnonSignIn = (async () => {
+            const { user: anonUser } = await signInAnonymously(auth);
+            if (cancelled) return;
+            setUser(anonUser);
+            setStatus("anonymous");
+            // Firestore sync is best-effort — never delete the auth user on
+            // failure or it causes an infinite new-user-on-every-refresh cycle.
+            try {
+              await syncAnonymousUserDocument(anonUser);
+              await updateUserSessionMetadata(anonUser);
+            } catch (docError) {
+              console.warn("anonymous user document sync failed (non-fatal):", docError);
+            }
+          })().finally(() => {
+            pendingAnonSignIn = null;
+          });
+        }
+
+        try {
+          await pendingAnonSignIn;
+        } catch (error) {
+          console.error("anonymous bootstrap failed", error);
+          if (!cancelled) {
+            setUser(null);
+            setStatus("loading");
+          }
+        }
+        return;
       }
+
+      setUser(nextUser);
+      setStatus(nextUser.isAnonymous ? "anonymous" : "authenticated");
+      if (!nextUser.isAnonymous) {
+        rememberAuthenticatedSession(nextUser);
+      }
+      void updateUserSessionMetadata(nextUser);
     });
 
     return () => {
       cancelled = true;
-      unsubscribe?.();
+      unsubscribe();
     };
   }, [syncAnonymousUserDocument]);
 

@@ -14,7 +14,6 @@ import {
   runTransaction,
   serverTimestamp,
   setDoc,
-  updateDoc,
   startAfter,
   writeBatch,
   arrayUnion,
@@ -248,21 +247,12 @@ export async function updateUserSessionMetadataIfNeeded(userId: string): Promise
     return;
   }
 
-  try {
-    // updateDoc (not setDoc+merge) so we never create a bare {lastActive}
-    // document — if the user doc doesn't exist yet, this is a no-op.
-    await updateDoc(doc(db, COLLECTIONS.users, userId), {
-      lastActive: serverTimestamp(),
-    });
-    window.localStorage.setItem(storageKey, String(now));
-  } catch (error) {
-    // Document doesn't exist yet (user doc not created) — skip silently.
-    // createUserDocument will set lastActive when it runs.
-    const code = (error as { code?: string }).code;
-    if (code !== "not-found") {
-      throw error;
-    }
-  }
+  await setDoc(
+    doc(db, COLLECTIONS.users, userId),
+    { lastActive: serverTimestamp() },
+    { merge: true },
+  );
+  window.localStorage.setItem(storageKey, String(now));
 }
 
 export async function checkUserByEmail(email: string): Promise<string[] | null> {
