@@ -1943,7 +1943,7 @@ html[data-theme="dark"] .cp-detail__tag::before {
   gap: 0;
   padding: 2px;
   background: var(--cp-toolbar-control-bg, rgba(127, 127, 127, 0.08));
-  border: 1px solid var(--cp-line);
+  border: 0;
   border-radius: 999px;
 }
 
@@ -2124,9 +2124,9 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   gap: 8px;
   height: 28px;
   padding: 0 12px;
-  border: 1px solid var(--cp-line-strong);
+  border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: rgba(127, 127, 127, 0.08);
   color: var(--cp-ink);
   cursor: pointer;
   font: inherit;
@@ -2137,7 +2137,7 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
 }
 
 .cp-ingredients-header__measurement-button:hover {
-  background: rgba(127, 127, 127, 0.06);
+  background: rgba(127, 127, 127, 0.13);
 }
 
 .cp-ingredients-header__measurement-menu {
