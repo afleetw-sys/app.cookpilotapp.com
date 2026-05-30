@@ -3279,6 +3279,12 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
     column-gap: 10px;
   }
 
+  /* Uniform image height on mobile — removes the tall/short card variation */
+  .cp-recipe-card__image-wrap--ratio-0,
+  .cp-recipe-card__image-wrap--ratio-1 {
+    flex: 0 0 180px;
+  }
+
   .cp-rail__menu {
     right: 0;
     top: calc(100% + 10px);
