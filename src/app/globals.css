@@ -1856,6 +1856,15 @@ html[data-theme="dark"] .cp-detail__tag::before {
   justify-content: flex-end;
 }
 
+/* Hidden on desktop — shown only inside the mobile media query */
+.cp-detail__hero-image-tags {
+  display: none;
+}
+
+.cp-detail__mobile-servings {
+  display: none;
+}
+
 .cp-detail__hero-image::before {
   content: "";
   position: absolute;
@@ -3275,6 +3284,39 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   }
 
   .cp-detail__hero-image::before {
+    display: none;
+  }
+
+  /* Tags overlaid on image at bottom-left on mobile */
+  .cp-detail__hero-image {
+    position: relative;
+  }
+
+  .cp-detail__hero-image-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cp-space-2);
+    position: absolute;
+    bottom: var(--cp-space-3);
+    left: var(--cp-space-3);
+    right: var(--cp-space-3);
+    z-index: 4;
+  }
+
+  /* Hide tags from the text copy on mobile — shown on image instead */
+  .cp-detail__hero-copy .cp-detail__tags {
+    display: none;
+  }
+
+  /* Servings control above ingredients — mobile only */
+  .cp-detail__mobile-servings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-2);
+  }
+
+  /* Hide the servings column inside the ingredients header on mobile */
+  .cp-ingredients-header__servings-column {
     display: none;
   }
 

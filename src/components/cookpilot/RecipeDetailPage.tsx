@@ -1377,6 +1377,19 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
               unoptimized
               width={300}
             />
+            {/* Tags overlaid on the image — only shown on mobile via CSS */}
+            {recipeTags.length > 0 ? (
+              <div className="cp-detail__hero-image-tags">
+                {recipeTags.map((tag, index) => (
+                  <RecipeTagChip
+                    isSystemTag={SYSTEM_TAGS.has(tag)}
+                    key={tag}
+                    tag={tag}
+                    visualIndex={index}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </header>
@@ -1443,6 +1456,28 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             </div>
           ) : null}
         </section>
+      ) : null}
+
+      {/* Servings control shown above ingredients on mobile only */}
+      {!isEditingRecipe && currentServings ? (
+        <div className="cp-detail__mobile-servings">
+          <IngredientsServingsControl
+            currentServings={currentServings}
+            onDecrement={() => setServingsOverride(Math.max(1, currentServings - 1))}
+            onIncrement={() => setServingsOverride(currentServings + 1)}
+            onServingsInput={(value) => {
+              const next = parseServingsInput(value);
+              if (next !== null) setServingsOverride(next);
+            }}
+          />
+          {canShowServingMultipliers ? (
+            <ServingsMultiplierPills
+              baseServings={baseServings}
+              currentServings={currentServings}
+              onSelectServings={setServingsOverride}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       <div className="cp-detail__grid">
