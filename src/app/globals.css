@@ -2013,7 +2013,7 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   align-items: center;
   height: 28px;
   padding: 0 12px;
-  border: 1px solid var(--cp-line);
+  border: 0;
   border-radius: 999px;
   background: rgba(127, 127, 127, 0.08);
   color: var(--cp-ink);
@@ -2026,7 +2026,6 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
 .cp-servings-control__pill.is-selected {
   background: var(--cp-ink);
   color: var(--cp-card);
-  border-color: var(--cp-ink);
 }
 
 .cp-detail--page .cp-button--save {
