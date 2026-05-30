@@ -1,6 +1,7 @@
 "use client";
 
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { Eye, EyeSlash } from "@phosphor-icons/react";
+import { useState, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 type BaseProps = {
   label?: string;
@@ -21,6 +22,9 @@ type TextareaProps = BaseProps &
 
 export function TextField(props: InputProps | TextareaProps) {
   const { label, hint, error, className = "", multiline, ...rest } = props;
+  const [showPassword, setShowPassword] = useState(false);
+
+  const isPassword = !multiline && (rest as InputHTMLAttributes<HTMLInputElement>).type === "password";
 
   return (
     <label className={`cp-field ${className}`.trim()}>
@@ -30,6 +34,23 @@ export function TextField(props: InputProps | TextareaProps) {
           {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
           className="cp-field__control cp-field__control--textarea"
         />
+      ) : isPassword ? (
+        <div className="cp-field__password-wrap">
+          <input
+            {...(rest as InputHTMLAttributes<HTMLInputElement>)}
+            className="cp-field__control cp-field__control--password"
+            type={showPassword ? "text" : "password"}
+          />
+          <button
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="cp-field__password-toggle"
+            onClick={() => setShowPassword((v) => !v)}
+            tabIndex={-1}
+            type="button"
+          >
+            {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
       ) : (
         <input
           {...(rest as InputHTMLAttributes<HTMLInputElement>)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { LinkSimple, Sparkle, X } from "@phosphor-icons/react";
+import { ArrowUpRight, LinkSimple, Sparkle, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useAppearance, type AppearanceMode } from "@/components/providers/AppearanceProvider";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +30,8 @@ export function SettingsPanel({
       await navigator.clipboard.writeText(shareMessage);
       setSettingsStatus("Share link copied.");
     } catch (error) {
+      // User dismissed the native share sheet — not an error.
+      if (error instanceof DOMException && error.name === "AbortError") return;
       console.error(error);
       setSettingsStatus("We couldn’t share right now.");
     }
@@ -94,6 +96,7 @@ export function SettingsPanel({
             <Sparkle size={16} />
           </div>
           <span>Feedback &amp; roadmap</span>
+          <ArrowUpRight className="cp-settings-row__external" size={15} weight="bold" />
         </button>
         {settingsStatus ? <p className="cp-settings-card__status">{settingsStatus}</p> : null}
       </div>

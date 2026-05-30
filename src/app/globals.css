@@ -498,7 +498,7 @@ ol {
 .cp-ingredient-list__notes,
 .cp-link {
   color: var(--cp-ink-soft);
-  font-size: 0.92rem;
+  font-size: 0.8rem;
   line-height: 1.5;
 }
 
@@ -593,7 +593,7 @@ ol {
 /* Outlined — secondary action */
 .cp-button--secondary {
   background: transparent;
-  border: 1.5px solid var(--cp-line-strong);
+  border: 1px solid var(--cp-line-strong);
   color: var(--cp-ink);
 }
 
@@ -664,6 +664,37 @@ ol {
 .cp-field__control--textarea {
   min-height: 120px;
   resize: vertical;
+}
+
+.cp-field__password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cp-field__control--password {
+  padding-right: 48px;
+}
+
+.cp-field__password-toggle {
+  position: absolute;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cp-ink-soft);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.cp-field__password-toggle:hover {
+  color: var(--cp-ink);
+  background: rgba(127, 127, 127, 0.1);
 }
 
 .cp-field__message {
@@ -892,7 +923,7 @@ ol {
   gap: 8px;
   min-height: 40px;
   padding: 0 16px;
-  border: 1.5px solid var(--cp-line-strong);
+  border: 1px solid var(--cp-line-strong);
   border-radius: 999px;
   background: transparent;
   color: var(--cp-ink);
@@ -1376,20 +1407,27 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: min(100%, 320px);
+  /* Outer wrapper just constrains to viewport — the card sizes itself */
+  width: 100%;
+  padding: var(--cp-space-5);
   text-align: center;
 }
 
-/* The card reuses cp-recipe-card but overrides interactive defaults */
+/* The card reuses cp-recipe-card but overrides interactive defaults.
+   width: max-content lets it hug the title width naturally; max-width
+   keeps it from overflowing narrow viewports. */
 .cp-empty-state__card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--cp-space-5);
-  padding: clamp(28px, 5vw, 40px) clamp(20px, 4vw, 32px);
+  gap: clamp(14px, 3vw, 20px);
+  padding: clamp(24px, 5vw, 36px) clamp(20px, 5vw, 32px);
   cursor: default;
   margin: 20px 0 16px;
   text-align: center;
+  /* Override cp-recipe-card's width: 100% so the card hugs content */
+  width: max-content;
+  max-width: calc(100vw - var(--cp-space-5) * 2);
 }
 
 .cp-empty-state__card:hover {
@@ -1404,33 +1442,35 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--cp-space-2);
+  gap: clamp(6px, 1.5vw, 10px);
   text-align: center;
 }
 
 .cp-empty-state__copy h2 {
-  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  font-size: clamp(1.3rem, 5vw, 1.7rem);
   font-weight: 600;
   letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .cp-empty-state__copy p {
-  max-width: 28ch;
+  max-width: 30ch;
   color: var(--cp-ink-soft);
-  font-size: 0.96rem;
+  font-size: clamp(0.84rem, 3.5vw, 0.94rem);
   line-height: 1.5;
+  white-space: normal;
 }
 
 .cp-empty-state__button {
   width: fit-content;
-  min-width: 160px;
+  min-width: clamp(130px, 40vw, 160px);
   box-shadow: none;
 }
 
 .cp-empty-state__meta {
   color: var(--cp-ink-soft);
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: clamp(0.68rem, 2.5vw, 0.76rem);
+  font-weight: 500;
 }
 
 .cp-settings-card {
@@ -1523,6 +1563,12 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   height: 32px;
   border-radius: 12px;
   background: rgba(127, 127, 127, 0.16);
+}
+
+.cp-settings-row__external {
+  margin-left: auto;
+  color: var(--cp-ink-soft);
+  flex-shrink: 0;
 }
 
 .cp-settings-card__status {
@@ -1749,7 +1795,7 @@ html[data-theme="dark"] .cp-detail__tag::before {
   gap: 7px;
   min-height: 34px;
   padding: 0 13px;
-  border: 1.5px solid var(--cp-line-strong);
+  border: 1px solid var(--cp-line-strong);
   border-radius: 999px;
   background: transparent;
   color: var(--cp-ink);
@@ -2007,14 +2053,10 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   flex-direction: column;
   gap: var(--cp-space-5);
   padding: var(--cp-space-5);
-  border: 1px solid color-mix(in srgb, var(--recipe-accent, var(--cp-line)) 24%, var(--cp-line));
+  border: 1px solid var(--cp-line);
   border-radius: 28px;
   background: transparent;
   box-shadow: none;
-}
-
-html[data-theme="dark"] .cp-detail__section-card {
-  border-color: color-mix(in srgb, var(--recipe-accent, var(--cp-line)) 20%, var(--cp-line));
 }
 
 .cp-detail__section-card--tags {
@@ -2023,7 +2065,8 @@ html[data-theme="dark"] .cp-detail__section-card {
 
 .cp-detail__section-card--danger {
   gap: var(--cp-space-4);
-  border-color: color-mix(in srgb, var(--cp-error) 28%, var(--cp-line));
+  border: 0;
+  padding: 0;
 }
 
 .cp-detail__section-block {
@@ -2070,7 +2113,7 @@ html[data-theme="dark"] .cp-detail__section-card {
   gap: 8px;
   height: 28px;
   padding: 0 12px;
-  border: 1.5px solid var(--cp-line-strong);
+  border: 1px solid var(--cp-line-strong);
   border-radius: 999px;
   background: transparent;
   color: var(--cp-ink);
@@ -2147,7 +2190,7 @@ html[data-theme="dark"] .cp-detail__section-card {
   flex-shrink: 0;
 }
 
-/* SVG checkbox — mirrors iOS AnimatedPencilCheckbox */
+/* SVG checkbox — mirrors iOS AnimatedPencilCheckbox exactly */
 .cp-ingredient-check-svg {
   width: 24px;
   height: 24px;
@@ -2163,6 +2206,24 @@ html[data-theme="dark"] .cp-detail__section-card {
     fill 260ms ease;
 }
 
+/* Glow/shadow layer — iOS: second stroke at lineWidth 1.1, opacity 0.28,
+   offset (0.15, 0.18). Drawn behind the primary mark. */
+.cp-ingredient-check-svg__mark-glow {
+  stroke: var(--recipe-chip-accent, var(--recipe-accent, var(--cp-blue)));
+  stroke-opacity: 0.28;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  opacity: 0;
+  transition:
+    stroke-dashoffset 260ms ease-in-out,
+    opacity 0ms 260ms;
+}
+
+/* Primary mark — iOS: lineWidth 2.1, opacity 0.96 */
 .cp-ingredient-check-svg__mark {
   stroke: var(--recipe-chip-accent, var(--recipe-accent, var(--cp-blue)));
   stroke-opacity: 0.96;
@@ -2170,22 +2231,19 @@ html[data-theme="dark"] .cp-detail__section-card {
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
-  /* Approximate path length — keeps mark hidden until checked */
-  stroke-dasharray: 32;
-  stroke-dashoffset: 32;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
   transition: stroke-dashoffset 260ms ease-in-out;
 }
 
 .cp-ingredient-row__text {
   font-size: 1rem;
   line-height: 1.5;
-  transition:
-    color 260ms ease,
-    opacity 260ms ease;
   text-decoration-line: none;
   text-decoration-color: transparent;
   transition:
     color 260ms ease,
+    opacity 260ms ease,
     text-decoration-color 260ms ease;
 }
 
@@ -2193,6 +2251,14 @@ html[data-theme="dark"] .cp-detail__section-card {
 .cp-ingredient-row.is-checked .cp-ingredient-check-svg__circle {
   stroke: rgba(100, 96, 88, 0.32);
   fill: color-mix(in srgb, var(--recipe-chip-accent, var(--recipe-accent, var(--cp-blue))) 4%, transparent);
+}
+
+.cp-ingredient-row.is-checked .cp-ingredient-check-svg__mark-glow {
+  stroke-dashoffset: 0;
+  opacity: 1;
+  transition:
+    stroke-dashoffset 260ms ease-in-out,
+    opacity 0ms 0ms;
 }
 
 .cp-ingredient-row.is-checked .cp-ingredient-check-svg__mark {
@@ -2619,34 +2685,48 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   position: fixed;
   inset: 0;
   z-index: 50;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
   padding: var(--cp-space-6);
-  background: var(--cp-body-background);
+  background: var(--cp-page);
 }
 
 .cp-auth-screen__card {
-  width: min(100%, 480px);
+  width: min(100%, 420px);
 }
 
 .cp-auth-screen__back {
   position: absolute;
-  top: var(--cp-space-6);
-  left: var(--cp-space-6);
+  top: var(--cp-space-5);
+  left: var(--cp-space-5);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 12px 8px 8px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
   color: var(--cp-ink-soft);
   cursor: pointer;
+  font: inherit;
+  font-size: 0.88rem;
   font-weight: 600;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.cp-auth-screen__back:hover {
+  background: rgba(127, 127, 127, 0.1);
+  color: var(--cp-ink);
 }
 
 .cp-auth-screen .cp-auth-card {
   background: transparent;
   border: 0;
   box-shadow: none;
+  padding: 0;
 }
 
 @keyframes cp-spin {
@@ -3042,9 +3122,6 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
     grid-template-columns: 1fr;
   }
 
-  .cp-empty-state {
-    width: min(100%, 300px);
-  }
 
   .cp-sort-select {
     width: 100%;

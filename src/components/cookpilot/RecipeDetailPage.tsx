@@ -1574,6 +1574,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                         <span className="cp-ingredient-row__check" aria-hidden="true">
                           <svg className="cp-ingredient-check-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <circle className="cp-ingredient-check-svg__circle" cx="12" cy="12" r="10.325" />
+                            {/* Glow/shadow layer — mirrors iOS overlay stroke at opacity 0.28, offset (0.15, 0.18) */}
+                            <path className="cp-ingredient-check-svg__mark-glow" d="M 5.03,12.918 C 6.614,14.304 8.594,17.472 10.178,18.066 C 12.95,13.314 20.078,4.998 24.434,3.018" />
+                            {/* Primary mark */}
                             <path className="cp-ingredient-check-svg__mark" d="M 4.88,12.738 C 6.464,14.124 8.444,17.292 10.028,17.886 C 12.8,13.134 19.928,4.818 24.284,2.838" />
                           </svg>
                         </span>

@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { StateBlock } from "@/components/ui/StateBlock";
 import { TextField } from "@/components/ui/TextField";
@@ -86,6 +87,20 @@ export function AuthCard({
   onGoogle,
   onApple,
 }: AuthCardProps) {
+  const [isEmailSubmitting, setIsEmailSubmitting] = useState(false);
+
+  async function handleContinueWithEmail() {
+    if (isEmailSubmitting) return;
+    setIsEmailSubmitting(true);
+    try {
+      await onContinueWithEmail();
+    } finally {
+      setIsEmailSubmitting(false);
+    }
+  }
+
+  const emailBusy = isWorking || isEmailSubmitting;
+
   return (
     <section className="cp-auth-card">
       <div className="cp-auth-card__logo">
@@ -107,8 +122,10 @@ export function AuthCard({
             value={authEmail}
           />
           {authError ? <StateBlock message={authError} title="Sign-in issue" tone="error" /> : null}
-          <Button disabled={isWorking} onClick={() => void onContinueWithEmail()}>
-            <EnvelopeSimple size={18} />
+          <Button disabled={emailBusy} onClick={() => void handleContinueWithEmail()}>
+            {isEmailSubmitting
+              ? <ArrowClockwise className="cp-spin" size={18} />
+              : <EnvelopeSimple size={18} />}
             Continue with email
           </Button>
           <div className="cp-auth-card__divider">
@@ -116,11 +133,11 @@ export function AuthCard({
             <p>or</p>
             <span />
           </div>
-          <Button disabled={isWorking} onClick={() => void onGoogle()} variant="secondary">
+          <Button disabled={emailBusy} onClick={() => void onGoogle()} variant="secondary">
             <GoogleAuthLogo />
             Continue with Google
           </Button>
-          <Button disabled={isWorking} onClick={() => void onApple()} variant="secondary">
+          <Button disabled={emailBusy} onClick={() => void onApple()} variant="secondary">
             <AppleAuthLogo />
             Continue with Apple
           </Button>
@@ -154,6 +171,7 @@ export function AuthCard({
           />
           {authError ? <StateBlock message={authError} title="Sign-in issue" tone="error" /> : null}
           <Button disabled={isWorking} onClick={() => void onSubmitPassword()}>
+            {isWorking ? <ArrowClockwise className="cp-spin" size={18} /> : null}
             {authMode === "signUp" ? "Create account" : "Sign in"}
           </Button>
         </div>

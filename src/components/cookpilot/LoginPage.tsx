@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/cookpilot/AuthCard";
@@ -163,24 +164,35 @@ export function LoginPage() {
   }
 
   return (
-    <div className="cp-page cp-page--centered">
-      <AuthCard
-        authEmail={authEmail}
-        authError={authError}
-        authFullName={authFullName}
-        authMode={authMode}
-        authPassword={authPassword}
-        authStep={authStep}
-        isWorking={isWorking || status === "loading"}
-        onApple={handleAppleAuth}
-        onBack={resetPasswordStep}
-        onContinueWithEmail={handleContinueWithEmail}
-        onEmailChange={setAuthEmail}
-        onFullNameChange={setAuthFullName}
-        onGoogle={handleGoogleAuth}
-        onPasswordChange={setAuthPassword}
-        onSubmitPassword={handleSubmitPassword}
-      />
+    <div className="cp-auth-screen">
+      <button
+        aria-label="Go back"
+        className="cp-auth-screen__back"
+        onClick={() => router.back()}
+        type="button"
+      >
+        <ArrowLeft size={18} />
+        Back
+      </button>
+      <div className="cp-auth-screen__card">
+        <AuthCard
+          authEmail={authEmail}
+          authError={authError}
+          authFullName={authFullName}
+          authMode={authMode}
+          authPassword={authPassword}
+          authStep={authStep}
+          isWorking={isWorking || status === "loading"}
+          onApple={handleAppleAuth}
+          onBack={resetPasswordStep}
+          onContinueWithEmail={handleContinueWithEmail}
+          onEmailChange={setAuthEmail}
+          onFullNameChange={setAuthFullName}
+          onGoogle={handleGoogleAuth}
+          onPasswordChange={setAuthPassword}
+          onSubmitPassword={handleSubmitPassword}
+        />
+      </div>
     </div>
   );
 }

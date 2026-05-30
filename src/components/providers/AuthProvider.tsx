@@ -266,6 +266,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
 
       if (!nextUser) {
+        // Immediately signal "loading" so the UI stops showing stale authenticated
+        // content while we determine whether to restore a persisted user or create
+        // a new anonymous one. Without this, RecipesPage keeps the old user in state
+        // and fires Firestore fetches against a cleared session cache, causing the
+        // jarring flash/error state visible during sign-out.
+        setUser(null);
+        setStatus("loading");
+
         // Wait for Firebase to finish loading the stored user from localStorage.
         await auth.authStateReady();
         if (cancelled) return;

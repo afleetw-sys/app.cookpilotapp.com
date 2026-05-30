@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AuthDialog } from "@/components/cookpilot/AuthDialog";
 import { AppTopBar } from "@/components/cookpilot/AppTopBar";
 import { SettingsPanel } from "@/components/cookpilot/SettingsPage";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -15,7 +14,6 @@ export function AuthenticatedAppShell({
 }) {
   const { status } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   if (status === "loading") {
     return (
@@ -32,11 +30,9 @@ export function AuthenticatedAppShell({
         topbar={
           <AppTopBar
             onSettingsClick={() => setIsSettingsOpen(true)}
-            onSignInClick={() => setIsAuthOpen(true)}
           />
         }
       />
-      {isAuthOpen ? <AuthDialog onClose={() => setIsAuthOpen(false)} /> : null}
       {isSettingsOpen ? (
         <div aria-hidden="true" className="cp-modal-backdrop" onClick={() => setIsSettingsOpen(false)}>
           <div

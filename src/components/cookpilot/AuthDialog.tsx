@@ -1,10 +1,9 @@
 "use client";
 
-import { X } from "@phosphor-icons/react";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { AuthCard } from "@/components/cookpilot/AuthCard";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { Button } from "@/components/ui/Button";
 
 type AuthStep = "emailEntry" | "passwordEntry";
 type AuthMode = "signIn" | "signUp";
@@ -159,22 +158,17 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div aria-hidden="true" className="cp-modal-backdrop" onClick={onClose}>
-      <div
-        aria-modal="true"
-        className="cp-modal-card cp-modal-card--auth"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
+    <div className="cp-auth-screen">
+      <button
+        aria-label="Go back"
+        className="cp-auth-screen__back"
+        onClick={onClose}
+        type="button"
       >
-        <Button
-          aria-label="Close sign in"
-          className="cp-auth-dialog__close"
-          onClick={onClose}
-          size="compact"
-          variant="icon"
-        >
-          <X size={18} />
-        </Button>
+        <ArrowLeft size={18} />
+        Back
+      </button>
+      <div className="cp-auth-screen__card">
         <AuthCard
           authEmail={authEmail}
           authError={authError}

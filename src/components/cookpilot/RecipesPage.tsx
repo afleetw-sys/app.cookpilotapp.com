@@ -251,7 +251,10 @@ export function RecipesPage({
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    // Skip while auth is still settling (e.g. mid sign-out while anonymous
+    // user is being created). status === "loading" means user will change again
+    // shortly — fetching now would cause a stale/error flash.
+    if (!user || status === "loading") return;
     const userId = user.uid;
     const hasCachedPage = Boolean(getRecipesBrowseSessionCache(userId));
     let cancelled = false;
@@ -439,6 +442,12 @@ export function RecipesPage({
       left: direction === "right" ? 260 : -260,
       behavior: "smooth",
     });
+  }
+
+  // Auth is mid-transition (e.g. signing out, anonymous user being created).
+  // Show nothing — the next status update will render the right state cleanly.
+  if (status === "loading") {
+    return null;
   }
 
   if (loadingRecipes && recipes.length === 0) {
