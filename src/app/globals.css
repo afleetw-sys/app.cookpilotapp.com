@@ -3272,11 +3272,11 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
 
   .cp-shell {
     gap: var(--cp-space-3);
-    padding: 0 var(--cp-space-4) var(--cp-space-4);
+    padding: 0 var(--cp-space-2) var(--cp-space-4);
   }
 
   .cp-recipe-grid {
-    column-gap: 18px;
+    column-gap: 10px;
   }
 
   .cp-rail__menu {
@@ -3315,6 +3315,7 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
     display: flex;
     flex-direction: column;
     gap: var(--cp-space-2);
+    margin: var(--cp-space-3) 0;
   }
 
   /* Hide the servings column inside the ingredients header on mobile */
