@@ -27,6 +27,7 @@ import {
   type UsageInfo,
 } from "@/lib/cookpilot/usageTracking";
 import { AIEditSection } from "@/components/cookpilot/AIEditSection";
+import { AILoadingOverlay } from "@/components/ui/AILoadingOverlay";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
@@ -1720,6 +1721,8 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           ) : null}
         </DetailSection>
       </div>
+
+      {editState.loading ? <AILoadingOverlay /> : null}
 
       {isEditingRecipe ? (
         <AIEditSection
