@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowClockwise, ArrowLeft, TrayArrowDown } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowLeft, PencilSimple, TrayArrowDown } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -98,6 +98,16 @@ export function ImportRecipePanel({
     }
   }
 
+  function handleCreateBlank() {
+    const recipeId = crypto.randomUUID();
+    savePendingImportDraft(recipeId, { ingredientSections: [], instructionSections: [], servings: 1 }, null);
+    if (onComplete) {
+      onComplete(recipeId);
+    } else {
+      router.push(`/recipes/${recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1`);
+    }
+  }
+
   const content = (
     <>
       <TextField
@@ -120,6 +130,13 @@ export function ImportRecipePanel({
         Import recipe
       </Button>
       {error ? <StateBlock message={error} title="Import issue" tone="error" /> : null}
+      <div className="cp-import-divider">
+        <span>or</span>
+      </div>
+      <Button onClick={handleCreateBlank} variant="secondary">
+        <PencilSimple size={18} />
+        Write your own recipe
+      </Button>
     </>
   );
 

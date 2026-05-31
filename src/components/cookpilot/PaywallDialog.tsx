@@ -1,7 +1,13 @@
 "use client";
 
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import type { Package } from "@revenuecat/purchases-js";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useSubscription } from "@/components/providers/SubscriptionProvider";
 import { Button } from "@/components/ui/Button";
+import { configureRevenueCat, ENTITLEMENT_ID } from "@/lib/revenuecat/client";
 
 const BENEFITS = [
   {
@@ -19,7 +25,67 @@ const BENEFITS = [
 ];
 
 export function PaywallDialog({ onClose }: { onClose: () => void }) {
-  return (
+  const { user } = useAuth();
+  const { refreshSubscriptionStatus } = useSubscription();
+  const [rcPackage, setRcPackage] = useState<Package | null>(null);
+  const [loadingOfferings, setLoadingOfferings] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Fetch the current offering from RevenueCat
+  useEffect(() => {
+    if (!user) return;
+    void (async () => {
+      try {
+        const purchases = configureRevenueCat(user.uid);
+        const offerings = await purchases.getOfferings();
+        const pkg = offerings.current?.availablePackages[0] ?? null;
+        setRcPackage(pkg);
+      } catch (err) {
+        console.error("[PaywallDialog] failed to load offerings", err);
+      } finally {
+        setLoadingOfferings(false);
+      }
+    })();
+  }, [user]);
+
+  async function handlePurchase() {
+    if (!user || !rcPackage) return;
+    setPurchasing(true);
+    setPurchaseError(null);
+    try {
+      const purchases = configureRevenueCat(user.uid);
+      const { customerInfo } = await purchases.purchase({ rcPackage });
+      if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
+        await refreshSubscriptionStatus();
+        onClose();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // User-cancelled checkout — don't show an error
+      if (msg.toLowerCase().includes("cancel")) {
+        setPurchasing(false);
+        return;
+      }
+      setPurchaseError("Something went wrong. Please try again.");
+      console.error("[PaywallDialog] purchase failed", err);
+    } finally {
+      setPurchasing(false);
+    }
+  }
+
+  const priceLabel = rcPackage?.webBillingProduct?.currentPrice
+    ? `${rcPackage.webBillingProduct.currentPrice.formattedPrice} / ${rcPackage.packageType === "ANNUAL" ? "year" : "month"}`
+    : null;
+
+  return createPortal(
     <div className="cp-modal-backdrop" onClick={onClose}>
       <div
         className="cp-modal-card cp-paywall-card"
@@ -43,7 +109,7 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
             Get more smart edits
           </h2>
           <p className="cp-paywall-card__subtitle">
-            Premium gives you unlimited access to AI-powered recipe editing and more.
+            Unlimited AI-powered recipe editing and more.
           </p>
         </div>
 
@@ -60,14 +126,30 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
         </ul>
 
         <div className="cp-paywall-card__cta">
-          <p className="cp-paywall-card__platform-note">
-            Subscribe through the CookPilot iOS or Mac app to unlock premium on all your devices.
-          </p>
+          {purchaseError ? (
+            <p className="cp-paywall-card__error">{purchaseError}</p>
+          ) : null}
+          {rcPackage ? (
+            <Button
+              disabled={purchasing}
+              onClick={() => void handlePurchase()}
+            >
+              <Sparkle size={16} weight="fill" />
+              {purchasing ? "Opening checkout…" : `Subscribe${priceLabel ? ` — ${priceLabel}` : ""}`}
+            </Button>
+          ) : loadingOfferings ? (
+            <Button disabled>Loading…</Button>
+          ) : (
+            <p className="cp-paywall-card__platform-note">
+              Subscribe through the CookPilot iOS or Mac app to unlock premium.
+            </p>
+          )}
           <Button onClick={onClose} variant="secondary" size="default">
-            Got it
+            Maybe later
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

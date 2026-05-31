@@ -1,6 +1,12 @@
 import { Purchases } from "@revenuecat/purchases-js";
 
-const REVENUECAT_WEB_API_KEY = process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY ?? "";
+// Use the sandbox key in development so purchases hit Stripe test mode.
+// In RevenueCat dashboard: create a Sandbox project and copy its Web Billing key here.
+const REVENUECAT_WEB_API_KEY =
+  process.env.NODE_ENV === "development"
+    ? (process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY_SANDBOX ?? process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY ?? "")
+    : (process.env.NEXT_PUBLIC_REVENUECAT_WEB_API_KEY ?? "");
+
 export const ENTITLEMENT_ID = "pro";
 
 /**
