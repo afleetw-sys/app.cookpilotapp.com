@@ -46,6 +46,7 @@ import {
   showConvertedMeasurements,
   type MeasurementMode,
 } from "@/lib/cookpilot/ingredientDisplay";
+import { ingredientDisplayLine, parseIngredientText } from "@/lib/cookpilot/ingredientParsing";
 import {
   buildSavedRecipe,
   decodeRecipeSummary,
@@ -1567,52 +1568,17 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                       {isEditingRecipe && editDraft ? (
                         <div className="cp-edit-row cp-edit-row--ingredient">
                           <input
-                            aria-label={`Ingredient ${globalIndex + 1} amount`}
-                            className="cp-edit-row__input cp-edit-row__input--amount"
-                            onChange={(event) =>
-                              updateDraftIngredient(section.id, ingredient.id, (current) => ({
-                                ...current,
-                                amount: event.target.value,
-                              }))
-                            }
-                            placeholder="Amount"
-                            value={ingredient.amount ?? ""}
-                          />
-                          <input
-                            aria-label={`Ingredient ${globalIndex + 1} unit`}
-                            className="cp-edit-row__input cp-edit-row__input--unit"
-                            onChange={(event) =>
-                              updateDraftIngredient(section.id, ingredient.id, (current) => ({
-                                ...current,
-                                unit: event.target.value,
-                              }))
-                            }
-                            placeholder="Unit"
-                            value={ingredient.unit ?? ""}
-                          />
-                          <input
-                            aria-label={`Ingredient ${globalIndex + 1} name`}
+                            aria-label={`Ingredient ${globalIndex + 1}`}
                             className="cp-edit-row__input"
-                            onChange={(event) =>
+                            onChange={(event) => {
+                              const parsed = parseIngredientText(event.target.value);
                               updateDraftIngredient(section.id, ingredient.id, (current) => ({
                                 ...current,
-                                name: event.target.value,
-                              }))
-                            }
-                            placeholder="Ingredient"
-                            value={ingredient.name}
-                          />
-                          <input
-                            aria-label={`Ingredient ${globalIndex + 1} notes`}
-                            className="cp-edit-row__input"
-                            onChange={(event) =>
-                              updateDraftIngredient(section.id, ingredient.id, (current) => ({
-                                ...current,
-                                notes: event.target.value,
-                              }))
-                            }
-                            placeholder="Notes"
-                            value={ingredient.notes ?? ""}
+                                ...parsed,
+                              }));
+                            }}
+                            placeholder="e.g. 2 cups flour, sifted"
+                            value={ingredientDisplayLine(ingredient)}
                           />
                           <button
                             aria-label={`Delete ingredient ${globalIndex + 1}`}

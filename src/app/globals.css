@@ -1596,10 +1596,24 @@ html[data-theme="dark"] .cp-recipe-card__tape {
     radial-gradient(ellipse at top right, color-mix(in srgb, var(--recipe-chip-fill, transparent) 36%, transparent), transparent 45%),
     linear-gradient(180deg, color-mix(in srgb, var(--recipe-bg, var(--cp-surface)) 72%, var(--cp-surface)) 0%, var(--cp-surface) 72%),
     var(--cp-surface);
-  border: 1px solid color-mix(in srgb, var(--recipe-accent, var(--cp-line)) 18%, var(--cp-line));
-  border-radius: 30px;
-  box-shadow: var(--cp-shadow);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   backdrop-filter: blur(24px);
+}
+
+.cp-app-shell:has(.cp-detail--page) .cp-app-shell__topbar {
+  margin-bottom: 0;
+}
+
+.cp-app-shell:has(.cp-detail--page) .cp-shell {
+  padding: 0;
+  gap: 0;
+}
+
+.cp-app-shell:has(.cp-detail--page) .cp-shell__main {
+  display: flex;
+  flex-direction: column;
 }
 
 html[data-theme="dark"] .cp-detail--page {
@@ -2300,7 +2314,7 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
 }
 
 .cp-edit-row--ingredient {
-  grid-template-columns: minmax(70px, 0.5fr) minmax(70px, 0.5fr) minmax(140px, 1.2fr) minmax(120px, 1fr) 40px;
+  grid-template-columns: minmax(0, 1fr) 40px;
 }
 
 .cp-edit-row--instruction {
@@ -2310,7 +2324,7 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
 .cp-edit-row__input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid var(--cp-line);
+  border: none;
   border-radius: 14px;
   background: var(--recipe-input-fill, color-mix(in srgb, var(--cp-card) 78%, var(--cp-page)));
   color: var(--cp-ink);
@@ -2325,7 +2339,6 @@ html[data-theme="dark"] .cp-edit-row__input {
 }
 
 .cp-edit-row__input:focus {
-  border-color: color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 58%, transparent);
   background: var(--cp-card);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 12%, transparent);
 }
@@ -2414,6 +2427,7 @@ html[data-theme="dark"] .cp-detail--page .cp-servings-control__stepper {
 }
 
 .cp-detail--page .cp-field__control {
+  border: none;
   background: var(--recipe-input-fill, color-mix(in srgb, var(--cp-card) 78%, var(--cp-page)));
 }
 
@@ -2422,7 +2436,6 @@ html[data-theme="dark"] .cp-detail--page .cp-field__control {
 }
 
 .cp-detail--page .cp-field__control:focus {
-  border-color: color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 58%, transparent);
   background: var(--cp-card);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 12%, transparent);
 }
@@ -2451,10 +2464,10 @@ html[data-theme="dark"] .cp-detail--page .cp-field__control {
   align-items: center;
   gap: var(--cp-space-2);
   padding: 0 14px 0 4px;
-  border: 1px solid var(--cp-line);
+  border: none;
   border-radius: 14px;
   background: var(--recipe-input-fill, color-mix(in srgb, var(--cp-card) 78%, var(--cp-page)));
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: box-shadow 120ms ease;
 }
 
 html[data-theme="dark"] .cp-time-picker__select-wrap {
@@ -2462,7 +2475,6 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
 }
 
 .cp-time-picker__select-wrap:focus-within {
-  border-color: color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 58%, transparent);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 12%, transparent);
 }
 
@@ -2541,13 +2553,17 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   align-items: flex-end;
   gap: var(--cp-space-3);
   padding: var(--cp-space-3);
-  border: 1px solid color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 18%, var(--cp-line));
+  border: none;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--cp-card) 82%, var(--cp-page));
+  background: var(--recipe-input-fill, var(--cp-card));
+  transition: box-shadow 120ms ease;
+}
+
+html[data-theme="dark"] .cp-ai-edit-form {
+  background: var(--recipe-input-fill-dark, var(--cp-card));
 }
 
 .cp-ai-edit-form:focus-within {
-  border-color: color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 48%, var(--cp-line));
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--recipe-accent, var(--cp-blue)) 10%, transparent);
 }
 
@@ -2645,8 +2661,12 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   align-items: center;
   gap: var(--cp-space-3);
   padding: var(--cp-space-3) var(--cp-space-4);
-  background: color-mix(in srgb, var(--cp-blue) 8%, var(--cp-card));
+  background: color-mix(in srgb, var(--cp-ink) 6%, var(--cp-card));
   border-radius: var(--cp-radius-md, 10px);
+}
+
+html[data-theme="dark"] .cp-ai-usage-banner {
+  background: color-mix(in srgb, var(--cp-ink) 10%, var(--cp-page));
 }
 
 .cp-ai-usage-banner__text {
@@ -2788,6 +2808,11 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   display: flex;
   flex-direction: column;
   gap: var(--cp-space-3);
+}
+
+.cp-paywall-card__error {
+  font-size: 0.84rem;
+  color: var(--cp-error);
 }
 
 .cp-paywall-card__platform-note {
@@ -2933,6 +2958,23 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   width: min(100%, 520px);
 }
 
+.cp-import-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--cp-space-3);
+  color: var(--cp-text-tertiary);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.cp-import-divider::before,
+.cp-import-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cp-line);
+}
+
 .cp-modal-card--auth {
   position: relative;
   width: min(100%, 480px);
@@ -3029,19 +3071,19 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
   gap: 12px;
   width: 100%;
   height: 100%;
-  border: 1.5px dashed var(--cp-line-strong);
+  border: none;
   border-radius: 26px;
-  background: color-mix(in srgb, var(--recipe-chip-fill, var(--cp-card)) 14%, var(--cp-card));
+  background: color-mix(in srgb, var(--recipe-chip-fill, var(--cp-accent, var(--cp-blue))) 22%, var(--cp-card));
   color: var(--cp-ink-soft);
   cursor: pointer;
   font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition: background 120ms ease;
 }
 
 .cp-image-picker__add:hover {
-  border-color: color-mix(in srgb, var(--recipe-chip-accent, var(--cp-blue)) 40%, var(--cp-line));
+  background: color-mix(in srgb, var(--recipe-chip-fill, var(--cp-accent, var(--cp-blue))) 32%, var(--cp-card));
   color: var(--cp-ink);
 }
 
