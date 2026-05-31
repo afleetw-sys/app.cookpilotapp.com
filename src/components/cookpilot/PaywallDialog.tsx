@@ -7,6 +7,7 @@ import type { Package } from "@revenuecat/purchases-js";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useSubscription } from "@/components/providers/SubscriptionProvider";
 import { Button } from "@/components/ui/Button";
+import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { configureRevenueCat, ENTITLEMENT_ID } from "@/lib/revenuecat/client";
 
 const BENEFITS = [
@@ -86,70 +87,62 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
     : null;
 
   return createPortal(
-    <div className="cp-modal-backdrop" onClick={onClose}>
-      <div
-        className="cp-modal-card cp-paywall-card"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="paywall-title"
+    <ModalShell aria-labelledby="paywall-title" onClose={onClose} variant="paywall">
+      <button
+        aria-label="Close"
+        className="cp-paywall-card__close"
+        onClick={onClose}
+        type="button"
       >
-        <button
-          aria-label="Close"
-          className="cp-paywall-card__close"
-          onClick={onClose}
-          type="button"
-        >
-          <X size={18} />
-        </button>
+        <X size={18} />
+      </button>
 
-        <div className="cp-paywall-card__header">
-          <Sparkle className="cp-paywall-card__icon" size={28} weight="fill" />
-          <h2 className="cp-paywall-card__title" id="paywall-title">
-            Get more smart edits
-          </h2>
-          <p className="cp-paywall-card__subtitle">
-            Unlimited AI-powered recipe editing and more.
-          </p>
-        </div>
-
-        <ul className="cp-paywall-benefits">
-          {BENEFITS.map((benefit) => (
-            <li className="cp-paywall-benefit" key={benefit.title}>
-              <CheckCircle className="cp-paywall-benefit__icon" size={20} weight="fill" />
-              <div>
-                <p className="cp-paywall-benefit__title">{benefit.title}</p>
-                <p className="cp-paywall-benefit__desc">{benefit.description}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        <div className="cp-paywall-card__cta">
-          {purchaseError ? (
-            <p className="cp-paywall-card__error">{purchaseError}</p>
-          ) : null}
-          {rcPackage ? (
-            <Button
-              disabled={purchasing}
-              onClick={() => void handlePurchase()}
-            >
-              <Sparkle size={16} weight="fill" />
-              {purchasing ? "Opening checkout…" : `Subscribe${priceLabel ? ` — ${priceLabel}` : ""}`}
-            </Button>
-          ) : loadingOfferings ? (
-            <Button disabled>Loading…</Button>
-          ) : (
-            <p className="cp-paywall-card__platform-note">
-              Subscribe through the CookPilot iOS or Mac app to unlock premium.
-            </p>
-          )}
-          <Button onClick={onClose} variant="secondary" size="default">
-            Maybe later
-          </Button>
-        </div>
+      <div className="cp-paywall-card__header">
+        <Sparkle className="cp-paywall-card__icon" size={28} weight="fill" />
+        <h2 className="cp-paywall-card__title" id="paywall-title">
+          Get more smart edits
+        </h2>
+        <p className="cp-paywall-card__subtitle">
+          Unlimited AI-powered recipe editing and more.
+        </p>
       </div>
-    </div>,
+
+      <ul className="cp-paywall-benefits">
+        {BENEFITS.map((benefit) => (
+          <li className="cp-paywall-benefit" key={benefit.title}>
+            <CheckCircle className="cp-paywall-benefit__icon" size={20} weight="fill" />
+            <div>
+              <p className="cp-paywall-benefit__title">{benefit.title}</p>
+              <p className="cp-paywall-benefit__desc">{benefit.description}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="cp-paywall-card__cta">
+        {purchaseError ? (
+          <p className="cp-paywall-card__error">{purchaseError}</p>
+        ) : null}
+        {rcPackage ? (
+          <Button
+            disabled={purchasing}
+            onClick={() => void handlePurchase()}
+          >
+            <Sparkle size={16} weight="fill" />
+            {purchasing ? "Opening checkout…" : `Subscribe${priceLabel ? ` — ${priceLabel}` : ""}`}
+          </Button>
+        ) : loadingOfferings ? (
+          <Button disabled>Loading…</Button>
+        ) : (
+          <p className="cp-paywall-card__platform-note">
+            Subscribe through the CookPilot iOS or Mac app to unlock premium.
+          </p>
+        )}
+        <Button onClick={onClose} variant="secondary" size="default">
+          Maybe later
+        </Button>
+      </div>
+    </ModalShell>,
     document.body,
   );
 }

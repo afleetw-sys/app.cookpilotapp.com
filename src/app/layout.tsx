@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,7 +34,9 @@ export default function RootLayout({
       <body>
         {/* eslint-disable-next-line react/no-danger */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <AppProviders>{children}</AppProviders>
+        <ErrorBoundary>
+          <AppProviders>{children}</AppProviders>
+        </ErrorBoundary>
       </body>
     </html>
   );

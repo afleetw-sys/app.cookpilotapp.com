@@ -16,7 +16,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import {
   knownTagsFromRecipes,
@@ -42,6 +41,7 @@ import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StateBlock } from "@/components/ui/StateBlock";
 import { loadRecipePage } from "@/lib/cookpilot/firestore";
+import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
 import type { RecipePageCursor, RecipeSummary } from "@/lib/cookpilot/types";
 
@@ -673,28 +673,6 @@ export function RecipesPage({
   );
 }
 
-function ModalShell({
-  onClose,
-  variant,
-  children,
-}: {
-  onClose: () => void;
-  variant: "import" | "settings";
-  children: ReactNode;
-}) {
-  return (
-    <div aria-hidden="true" className="cp-modal-backdrop" onClick={onClose}>
-      <div
-        aria-modal="true"
-        className={`cp-modal-card cp-modal-card--${variant}`}
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
 
 function ImportRecipeDialog({
   onClose,

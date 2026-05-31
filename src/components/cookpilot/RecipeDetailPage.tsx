@@ -1376,7 +1376,6 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
               height={300}
               onError={() => void handleDetailImageError()}
               src={resolvedDetailImageSrc!}
-              unoptimized
               width={300}
             />
             {/* Tags overlaid on the image — only shown on mobile via CSS */}

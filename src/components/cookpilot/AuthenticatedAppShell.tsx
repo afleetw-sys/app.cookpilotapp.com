@@ -6,6 +6,7 @@ import { SettingsPanel } from "@/components/cookpilot/SettingsPage";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { AppShell } from "@/components/ui/AppShell";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ModalShell } from "@/components/cookpilot/ModalShell";
 
 export function AuthenticatedAppShell({
   children,
@@ -34,16 +35,9 @@ export function AuthenticatedAppShell({
         }
       />
       {isSettingsOpen ? (
-        <div aria-hidden="true" className="cp-modal-backdrop" onClick={() => setIsSettingsOpen(false)}>
-          <div
-            aria-modal="true"
-            className="cp-modal-card cp-modal-card--settings"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <SettingsPanel onClose={() => setIsSettingsOpen(false)} />
-          </div>
-        </div>
+        <ModalShell onClose={() => setIsSettingsOpen(false)} variant="settings">
+          <SettingsPanel onClose={() => setIsSettingsOpen(false)} />
+        </ModalShell>
       ) : null}
     </>
   );
