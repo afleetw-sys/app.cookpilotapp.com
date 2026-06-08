@@ -436,6 +436,11 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   }, [loadingRecipeDetail]);
 
   useEffect(() => {
+    if (status !== "signedOut") return;
+    router.replace("/recipes");
+  }, [router, status]);
+
+  useEffect(() => {
     if (!user || isPendingDraft) return;
     detailInitializedRef.current = false;
     const userId = user.uid;
@@ -1304,10 +1309,18 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                         setShowTagDropdown(true);
                       }}
                       onFocus={() => setShowTagDropdown(true)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          addDraftTag();
+	                      onKeyDown={(event) => {
+	                        if (
+	                          event.key === "Backspace" &&
+	                          event.currentTarget.value.length === 0 &&
+	                          recipeTags.length > 0
+	                        ) {
+	                          event.preventDefault();
+	                          removeDraftTag(recipeTags[recipeTags.length - 1]);
+	                        }
+	                        if (event.key === "Enter") {
+	                          event.preventDefault();
+	                          addDraftTag();
                         }
                         if (event.key === "Escape") {
                           setShowTagDropdown(false);

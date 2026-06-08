@@ -251,6 +251,15 @@ export function RecipesPage({
   }, []);
 
   useEffect(() => {
+    if (status === "signedOut") {
+      setRecipes([]);
+      setNextCursor(null);
+      setTotalRecipeCount(0);
+      setLoadingRecipes(false);
+      setRecipesError(null);
+      return;
+    }
+
     // Skip while auth is still settling (e.g. mid sign-out while anonymous
     // user is being created). status === "loading" means user will change again
     // shortly — fetching now would cause a stale/error flash.

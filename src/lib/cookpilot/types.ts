@@ -125,7 +125,7 @@ export type EditRecipeResponse = {
   refusalReason?: string;
 };
 
-export type AuthStatus = "loading" | "anonymous" | "authenticated";
+export type AuthStatus = "loading" | "signedOut" | "anonymous" | "authenticated";
 
 export type SharedRecipePayload = {
   recipe: RecipeData;

@@ -39,6 +39,7 @@ type AuthContextValue = {
   user: User | null;
   status: AuthStatus;
   isWorking: boolean;
+  ensureAnonymousUser: () => Promise<User>;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   continueWithEmail: (email: string) => Promise<EmailAuthStepResult>;
@@ -65,8 +66,8 @@ const AUTHENTICATED_SESSION_MARKER_KEY = "cookpilot.lastAuthenticatedSession";
 const ANONYMOUS_UID_KEY = "cookpilot.anonymousUid";
 const AUTH_RESTORE_GRACE_MS = 2500;
 
-// Deduplicates concurrent signInAnonymously() calls (e.g. React Strict Mode double-mount).
-let pendingAnonSignIn: Promise<void> | null = null;
+// Deduplicates concurrent signInAnonymously() calls.
+let pendingAnonSignIn: Promise<User> | null = null;
 
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider("apple.com");
@@ -329,30 +330,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           forgetAnonymousUid();
         }
 
-        if (!pendingAnonSignIn) {
-          pendingAnonSignIn = (async () => {
-            const { user: anonUser } = await signInAnonymously(auth);
-            if (cancelled) return;
-            rememberAnonymousUid(anonUser.uid);
-            setUser(anonUser);
-            setStatus("anonymous");
-            // No Firestore document created for anonymous users — doing so eagerly
-            // was the root cause of the infinite new-user-on-every-refresh cycle.
-            // The document is created by ensureUserDocument when they sign in.
-          })().finally(() => {
-            pendingAnonSignIn = null;
-          });
-        }
-
-        try {
-          await pendingAnonSignIn;
-        } catch (error) {
-          console.error("anonymous bootstrap failed", error);
-          if (!cancelled) {
-            setUser(null);
-            setStatus("loading");
-          }
-        }
+        setUser(null);
+        setStatus("signedOut");
         handlerRunning = false;
         return;
       }
@@ -385,6 +364,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       unsubscribe();
     };
+  }, []);
+
+  const ensureAnonymousUserAction = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setUser(currentUser);
+      setStatus(currentUser.isAnonymous ? "anonymous" : "authenticated");
+      if (currentUser.isAnonymous) {
+        rememberAnonymousUid(currentUser.uid);
+      } else {
+        rememberAuthenticatedSession(currentUser);
+      }
+      return currentUser;
+    }
+
+    if (!pendingAnonSignIn) {
+      pendingAnonSignIn = (async () => {
+        const { user: anonUser } = await signInAnonymously(auth);
+        rememberAnonymousUid(anonUser.uid);
+        setUser(anonUser);
+        setStatus("anonymous");
+        return anonUser;
+      })().finally(() => {
+        pendingAnonSignIn = null;
+      });
+    }
+
+    return pendingAnonSignIn;
   }, []);
 
   const signInWithGoogleAction = useCallback(async () => {
@@ -446,6 +453,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [finalizeAuthenticatedUser, mergeAnonymousIfNeeded]);
 
   const continueWithEmailAction = useCallback(async (email: string): Promise<EmailAuthStepResult> => {
+    if (!auth.currentUser) {
+      await ensureAnonymousUserAction();
+    }
+
     const { checkUserProviders } = await import("@/lib/cookpilot/functions");
     const methods = (await checkUserProviders(email.trim().toLowerCase())) ?? [];
 
@@ -466,7 +477,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return { kind: "passwordSignUp" };
-  }, []);
+  }, [ensureAnonymousUserAction]);
 
   const submitEmailAuthAction = useCallback(async ({
     email,
@@ -554,6 +565,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       status,
       isWorking,
+      ensureAnonymousUser: ensureAnonymousUserAction,
       signInWithGoogle: signInWithGoogleAction,
       signInWithApple: signInWithAppleAction,
       continueWithEmail: continueWithEmailAction,
@@ -565,6 +577,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       status,
       isWorking,
+      ensureAnonymousUserAction,
       signInWithGoogleAction,
       signInWithAppleAction,
       continueWithEmailAction,

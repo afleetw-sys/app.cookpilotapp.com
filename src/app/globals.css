@@ -1871,7 +1871,7 @@ html[data-theme="dark"] .cp-detail__tag svg {
 }
 
 .cp-tag-combobox__chip > svg:first-child {
-  color: var(--recipe-current-chip-accent, var(--recipe-current-accent, var(--cp-ink-soft)));
+  color: var(--recipe-current-chip-accent-on-bg, var(--recipe-current-chip-accent, #9fe34e));
 }
 
 .cp-tag-combobox__text-input {
@@ -1931,7 +1931,7 @@ html[data-theme="dark"] .cp-detail__tag svg {
 }
 
 .cp-tag-combobox__option > svg:first-child {
-  color: var(--recipe-current-chip-accent, var(--recipe-current-accent, var(--cp-ink-soft)));
+  color: var(--recipe-current-chip-accent-on-bg, var(--recipe-current-chip-accent, #9fe34e));
   flex: 0 0 auto;
 }
 
@@ -1946,7 +1946,7 @@ html[data-theme="dark"] .cp-detail__tag svg {
 
 .cp-tag-combobox__check {
   margin-left: auto;
-  color: var(--recipe-current-chip-accent, var(--recipe-current-accent, var(--cp-ink-soft)));
+  color: var(--recipe-current-chip-accent-on-bg, var(--recipe-current-chip-accent, #9fe34e));
   flex: 0 0 auto;
 }
 

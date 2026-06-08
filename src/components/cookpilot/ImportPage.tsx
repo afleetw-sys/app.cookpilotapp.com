@@ -22,19 +22,20 @@ export function ImportRecipePanel({
   framed?: boolean;
 }) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { ensureAnonymousUser, user } = useAuth();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleImportRecipe() {
-    if (!user || !url.trim()) return;
-    const userId = user.uid;
+    if (!url.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
+      const activeUser = user ?? await ensureAnonymousUser();
+      const userId = activeUser.uid;
       const trimmedURL = url.trim();
       const shareId = parseCookPilotShareId(trimmedURL);
       if (shareId) {
@@ -98,7 +99,8 @@ export function ImportRecipePanel({
     }
   }
 
-  function handleCreateBlank() {
+  async function handleCreateBlank() {
+    await ensureAnonymousUser();
     const recipeId = crypto.randomUUID();
     savePendingImportDraft(recipeId, { ingredientSections: [], instructionSections: [], servings: 1 }, null);
     if (onComplete) {
@@ -133,7 +135,7 @@ export function ImportRecipePanel({
       <div className="cp-import-divider">
         <span>or</span>
       </div>
-      <Button onClick={handleCreateBlank} variant="secondary">
+      <Button onClick={() => void handleCreateBlank()} variant="secondary">
         <PencilSimple size={18} />
         Write your own recipe
       </Button>

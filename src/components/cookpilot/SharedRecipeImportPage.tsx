@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StateBlock } from "@/components/ui/StateBlock";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { IMPORT_DRAFT_SEARCH_PARAM } from "@/lib/cookpilot/importDraft";
 import {
   importLegacySharedRecipe,
@@ -12,9 +13,13 @@ import {
 
 export function SharedRecipeImportPage({ shareId }: { shareId: string }) {
   const router = useRouter();
+  const { ensureAnonymousUser, user } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const importStartedRef = useRef(false);
 
   useEffect(() => {
+    if (importStartedRef.current) return;
+    importStartedRef.current = true;
     let cancelled = false;
 
     async function importSharedRecipe() {
@@ -25,6 +30,11 @@ export function SharedRecipeImportPage({ shareId }: { shareId: string }) {
         if (!resolved) {
           setErrorMessage("This shared recipe link is no longer available.");
           return;
+        }
+
+        if (!user) {
+          await ensureAnonymousUser();
+          if (cancelled) return;
         }
 
         if (resolved.kind === "snapshot") {
@@ -48,7 +58,7 @@ export function SharedRecipeImportPage({ shareId }: { shareId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [router, shareId]);
+  }, [ensureAnonymousUser, router, shareId, user]);
 
   if (errorMessage) {
     return (
