@@ -31,6 +31,7 @@ import type {
   RecipeThemeSeedColors,
   SavedRecipe,
 } from "@/lib/cookpilot/types";
+import { totalTimeMinutes } from "@/lib/cookpilot/timeFormatting";
 
 const COLLECTIONS = {
   users: "users",
@@ -132,24 +133,6 @@ export function ingredientNamesForSearch(recipe: RecipeData): string[] {
   );
 }
 
-function totalTimeMinutes(recipe: RecipeData): number | null {
-  const parts = [recipe.prepTime, recipe.cookTime].filter(Boolean) as string[];
-  let total = 0;
-  let found = false;
-
-  for (const part of parts) {
-    const matches = part.toLowerCase().matchAll(/(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours|m|min|mins|minute|minutes)/g);
-    for (const match of matches) {
-      const value = Number(match[1]);
-      const unit = match[2];
-      if (!Number.isFinite(value)) continue;
-      found = true;
-      total += unit.startsWith("h") ? value * 60 : value;
-    }
-  }
-
-  return found ? total : null;
-}
 
 function summaryDataForFirestore(recipe: SavedRecipe) {
   return {
@@ -469,7 +452,7 @@ export function buildSavedRecipe(params: {
     checkedIngredientIndices: params.checkedIngredientIndices ?? [],
     preferredIngredientMeasurementRaw: params.preferredIngredientMeasurementRaw ?? null,
     ingredientNames: ingredientNamesForSearch(params.recipe),
-    totalTimeMinutes: totalTimeMinutes(params.recipe),
+    totalTimeMinutes: totalTimeMinutes(params.recipe.prepTime, params.recipe.cookTime),
     themeSeedColors: params.themeSeedColors ?? null,
   };
 }

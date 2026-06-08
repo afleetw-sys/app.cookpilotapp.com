@@ -2,6 +2,7 @@
 // and RecipeParsingHelpers.splitNameAndNotes
 
 import type { Ingredient } from "@/lib/cookpilot/types";
+import { normalizeFractions } from "@/lib/cookpilot/parseUtils";
 
 // Keep in sync with UNITS aliases in ingredientDisplay.ts
 const ALL_UNIT_ALIASES = new Set([
@@ -69,19 +70,6 @@ export function parseIngredientText(raw: string): Omit<Ingredient, "id"> {
 // Internal parsers
 // ---------------------------------------------------------------------------
 
-function normalizeFractions(s: string): string {
-  return s
-    .replace(/½/g, "1/2")
-    .replace(/⅓/g, "1/3")
-    .replace(/⅔/g, "2/3")
-    .replace(/¼/g, "1/4")
-    .replace(/¾/g, "3/4")
-    .replace(/⅛/g, "1/8")
-    .replace(/⅜/g, "3/8")
-    .replace(/⅝/g, "5/8")
-    .replace(/⅞/g, "7/8")
-    .replace(/⁄/g, "/");
-}
 
 function stripApproximationPrefix(s: string): string {
   for (const prefix of APPROXIMATION_PREFIXES) {

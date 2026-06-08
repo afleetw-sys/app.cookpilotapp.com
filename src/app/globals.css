@@ -2059,7 +2059,7 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   align-items: start;
 }
 
-@media (min-width: 1121px) {
+@media (min-width: 681px) {
   .cp-detail__grid > * {
     position: sticky;
     top: calc(62px + var(--cp-space-4));
@@ -2938,9 +2938,10 @@ html[data-theme="dark"] .cp-ai-usage-banner {
 .cp-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
-  display: grid;
-  place-items: center;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--cp-space-5);
   background: rgba(12, 18, 28, 0.22);
   backdrop-filter: blur(8px);
@@ -3184,6 +3185,11 @@ html[data-theme="dark"] .cp-ai-usage-banner {
     justify-content: center;
   }
 
+  .cp-detail__image,
+  .cp-image-picker {
+    max-width: none;
+  }
+
   .cp-detail__hero--text-only .cp-detail__hero-copy {
     order: 0;
   }
@@ -3203,8 +3209,7 @@ html[data-theme="dark"] .cp-ai-usage-banner {
     width: 100%;
   }
 
-  .cp-detail__hero,
-  .cp-detail__grid {
+  .cp-detail__hero {
     grid-template-columns: 1fr;
   }
 
@@ -3451,18 +3456,6 @@ html[data-theme="dark"] .cp-ai-usage-banner {
     display: none;
   }
 
-  /* Servings control above ingredients — mobile only */
-  .cp-detail__mobile-servings {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cp-space-2);
-    margin: var(--cp-space-3) 0;
-  }
-
-  /* Hide the servings column inside the ingredients header on mobile */
-  .cp-ingredients-header__servings-column {
-    display: none;
-  }
 
   /* Move measurement dropdown inline with "Ingredients" title on mobile.
      Make the left wrapper transparent so title-row and title-below become
@@ -3532,4 +3525,36 @@ html[data-theme="dark"] .cp-ai-usage-banner {
     width: 100%;
   }
 
+}
+
+/* Tablet: stack title → measurement → servings vertically */
+@media (min-width: 681px) and (max-width: 1120px) {
+  .cp-section-header:has(.cp-ingredients-header__servings-column) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cp-space-3);
+  }
+
+  .cp-section-header:has(.cp-ingredients-header__servings-column) .cp-ingredients-header__servings-column {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 680px) {
+  .cp-detail__grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Servings control above ingredients — single-column layout only */
+  .cp-detail__mobile-servings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-2);
+    margin: var(--cp-space-3) 0;
+  }
+
+  /* Hide the servings column inside the ingredients header */
+  .cp-ingredients-header__servings-column {
+    display: none;
+  }
 }

@@ -1,4 +1,5 @@
 import type { Ingredient } from "@/lib/cookpilot/types";
+import { parseAmount } from "@/lib/cookpilot/parseUtils";
 
 export type MeasurementMode = "original" | "cups" | "metricDisplay";
 export type RecipeIngredientMeasurementDominance =
@@ -41,15 +42,65 @@ const UNITS: MeasurementUnit[] = [
 ];
 
 const UNITS_WITH_OF_DISPLAY = new Set(["zest", "juice"]);
+
+/**
+ * Liquid ingredient keywords — longest entries first so more specific phrases
+ * match before their substrings (e.g. "olive oil" before "oil").
+ * Port of IngredientMetricVolumeConversion.liquidKeywordsLongestFirst (iOS).
+ */
+const LIQUID_KEYWORDS: string[] = [
+  "half and half", "sweetened condensed milk", "evaporated milk", "vanilla extract",
+  "almond extract", "maple syrup", "corn syrup", "simple syrup",
+  "chicken broth", "beef broth", "vegetable broth",
+  "coconut milk", "almond milk", "oat milk", "soy milk", "cashew milk",
+  "olive oil", "vegetable oil", "coconut oil", "sesame oil", "canola oil", "avocado oil",
+  "soy sauce", "fish sauce", "hot sauce", "worcestershire",
+  "apple juice", "orange juice", "lemon juice", "lime juice", "pineapple juice",
+  "tomato juice", "cranberry juice",
+  "tomato sauce", "tomato paste",
+  "heavy cream", "light cream", "sour cream",
+  "chicken stock", "beef stock", "vegetable stock",
+  "buttermilk", "liqueur",
+  "broth", "stock", "extract", "rum", "vodka", "whiskey", "brandy", "gin", "tequila",
+  "water", "milk", "cream", "oil", "juice", "vinegar", "wine", "beer", "soda",
+  "yogurt", "kefir", "honey", "molasses", "tea", "coffee", "espresso", "kombucha",
+].sort((a, b) => b.length - a.length);
+
+/**
+ * Approximate grams per US cup for common solid ingredients.
+ * Longer keywords take precedence — keep more-specific entries before their substrings.
+ * Port of IngredientMetricVolumeConversion.gramsPerUSCupTable (iOS).
+ */
 const GRAMS_PER_US_CUP_BY_KEYWORD: Array<{ keyword: string; grams: number }> = [
+  { keyword: "all-purpose flour", grams: 120 },
+  { keyword: "all purpose flour", grams: 120 },
+  { keyword: "bread flour", grams: 120 },
+  { keyword: "cake flour", grams: 100 },
+  { keyword: "whole wheat flour", grams: 113 },
+  { keyword: "wheat flour", grams: 120 },
+  { keyword: "granulated sugar", grams: 200 },
+  { keyword: "brown sugar", grams: 200 },
+  { keyword: "powdered sugar", grams: 120 },
+  { keyword: "confectioners sugar", grams: 120 },
+  { keyword: "cocoa powder", grams: 85 },
+  { keyword: "rolled oats", grams: 90 },
+  { keyword: "quick oats", grams: 90 },
+  { keyword: "cornstarch", grams: 128 },
+  { keyword: "cornmeal", grams: 138 },
+  { keyword: "breadcrumbs", grams: 108 },
+  { keyword: "chocolate chips", grams: 170 },
+  { keyword: "chopped walnuts", grams: 117 },
+  { keyword: "chopped almonds", grams: 142 },
+  { keyword: "shredded coconut", grams: 75 },
+  { keyword: "shredded cheese", grams: 113 },
+  { keyword: "cream cheese", grams: 232 },
+  { keyword: "long-grain rice", grams: 185 },
+  { keyword: "shortening", grams: 191 },
+  { keyword: "butter", grams: 227 },
   { keyword: "flour", grams: 120 },
   { keyword: "sugar", grams: 200 },
-  { keyword: "brown sugar", grams: 220 },
-  { keyword: "powdered sugar", grams: 120 },
-  { keyword: "butter", grams: 227 },
   { keyword: "oats", grams: 90 },
   { keyword: "rice", grams: 185 },
-  { keyword: "chocolate chips", grams: 170 },
   { keyword: "parmesan", grams: 100 },
 ];
 
@@ -184,7 +235,13 @@ function withNotes(base: string, notes?: string | null): string {
   return notes?.trim() ? `${base} ${notes.trim()}` : base;
 }
 
+function isLiquidIngredient(name: string): boolean {
+  const lower = name.toLowerCase();
+  return LIQUID_KEYWORDS.some((keyword) => lower.includes(keyword));
+}
+
 function lookupGramsPerCup(name: string): number | null {
+  if (isLiquidIngredient(name)) return null;
   const lower = name.toLowerCase();
   const match = GRAMS_PER_US_CUP_BY_KEYWORD.find((entry) => lower.includes(entry.keyword));
   return match?.grams ?? null;
@@ -197,47 +254,6 @@ function resolveUnit(rawUnit?: string | null): MeasurementUnit | null {
   return UNITS.find((unit) => unit.aliases.some((alias) => alias.toLowerCase() === normalized)) ?? null;
 }
 
-function parseAmount(raw?: string | null): number | null {
-  const normalized = raw?.trim();
-  if (!normalized) return null;
-
-  let value = normalized
-    .replaceAll("½", "1/2")
-    .replaceAll("⅓", "1/3")
-    .replaceAll("⅔", "2/3")
-    .replaceAll("¼", "1/4")
-    .replaceAll("¾", "3/4")
-    .replaceAll("⅛", "1/8")
-    .replaceAll("⅜", "3/8")
-    .replaceAll("⅝", "5/8")
-    .replaceAll("⅞", "7/8")
-    .replaceAll("⁄", "/");
-
-  const parts = value.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2 && Number.isFinite(Number(parts[0])) && parts[1]?.includes("/")) {
-    const whole = Number(parts[0]);
-    const fraction = parseFraction(parts[1]);
-    if (fraction !== null) return whole + fraction;
-  }
-
-  if (parts.length >= 1) {
-    const fraction = parseFraction(parts[0]);
-    if (fraction !== null) return fraction;
-    const numeric = Number(parts[0]);
-    if (Number.isFinite(numeric)) return numeric;
-  }
-
-  return null;
-}
-
-function parseFraction(raw: string): number | null {
-  const parts = raw.split("/");
-  if (parts.length !== 2) return null;
-  const numerator = Number(parts[0]);
-  const denominator = Number(parts[1]);
-  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) return null;
-  return numerator / denominator;
-}
 
 function roundDisplayValue(value: number): number {
   if (value < 10) return Math.round(value * 10) / 10;

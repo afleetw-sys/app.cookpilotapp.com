@@ -126,6 +126,14 @@ function getStoredAnonymousUid(): string | null {
   try { return window.localStorage.getItem(ANONYMOUS_UID_KEY); } catch { return null; }
 }
 
+function rememberUserDocEnsured(uid: string) {
+  try { window.localStorage.setItem(`cookpilot.userDocEnsured.${uid}`, "1"); } catch { /* ignore */ }
+}
+
+function isUserDocEnsured(uid: string): boolean {
+  try { return Boolean(window.localStorage.getItem(`cookpilot.userDocEnsured.${uid}`)); } catch { return false; }
+}
+
 function wait(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
@@ -176,6 +184,7 @@ async function ensureUserDocument(user: User, provider: string) {
     provider,
     isAnonymous: user.isAnonymous,
   });
+  rememberUserDocEnsured(user.uid);
 }
 
 async function updateUserSessionMetadata(user: User) {
@@ -360,6 +369,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // calling this on anon users caused spurious Firestore writes before
         // their user document was guaranteed to exist.
         void updateUserSessionMetadata(nextUser);
+        // Self-healing: if the Firestore write failed during a previous sign-in
+        // (auth record exists, user doc does not), recreate it. The localStorage
+        // flag ensures this only runs once per UID, not on every token refresh.
+        if (!isUserDocEnsured(nextUser.uid)) {
+          void ensureUserDocument(nextUser, nextUser.providerData[0]?.providerId ?? "password").catch(
+            (error) => console.error("ensureUserDocument recovery failed", error),
+          );
+        }
       }
       handlerRunning = false;
     });
@@ -389,8 +406,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const result = await signInWithPopup(auth, googleProvider);
-      await finalizeAuthenticatedUser(result.user, "google.com");
-      await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+      try {
+        await finalizeAuthenticatedUser(result.user, "google.com");
+      } finally {
+        await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+      }
     } finally {
       setIsWorking(false);
     }
@@ -415,8 +435,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const result = await signInWithPopup(auth, appleProvider);
-      await finalizeAuthenticatedUser(result.user, "apple.com");
-      await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+      try {
+        await finalizeAuthenticatedUser(result.user, "apple.com");
+      } finally {
+        await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+      }
     } finally {
       setIsWorking(false);
     }
@@ -488,8 +511,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await updateProfile(result.user, { displayName: fullName.trim() });
       }
 
-      await finalizeAuthenticatedUser(result.user, "password");
-      await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+      try {
+        await finalizeAuthenticatedUser(result.user, "password");
+      } finally {
+        await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+      }
     } finally {
       setIsWorking(false);
     }
