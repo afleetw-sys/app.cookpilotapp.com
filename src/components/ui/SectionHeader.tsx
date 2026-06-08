@@ -3,14 +3,12 @@ import type { ReactNode } from "react";
 export function SectionHeader({
   eyebrow,
   title,
-  titleAddon,
-  titleBelow,
+  titleAccessory,
   children,
 }: {
   eyebrow?: string;
   title: string;
-  titleAddon?: ReactNode;
-  titleBelow?: ReactNode;
+  titleAccessory?: ReactNode;
   children?: ReactNode;
 }) {
   return (
@@ -19,9 +17,8 @@ export function SectionHeader({
         {eyebrow ? <p className="cp-eyebrow">{eyebrow}</p> : null}
         <div className="cp-section-header__title-row">
           <h3>{title}</h3>
-          {titleAddon}
+          {titleAccessory}
         </div>
-        {titleBelow ? <div className="cp-section-header__title-below">{titleBelow}</div> : null}
       </div>
       {children}
     </div>

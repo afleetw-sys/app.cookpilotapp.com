@@ -2,7 +2,6 @@
 
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { PackageType } from "@revenuecat/purchases-js";
 import type { Package } from "@revenuecat/purchases-js";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -87,7 +86,7 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
     ? `${rcPackage.webBillingProduct.currentPrice.formattedPrice} / ${rcPackage.packageType === PackageType.Annual ? "year" : "month"}`
     : null;
 
-  return createPortal(
+  return (
     <ModalShell aria-labelledby="paywall-title" onClose={onClose} variant="paywall">
       <button
         aria-label="Close"
@@ -143,7 +142,6 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
           Maybe later
         </Button>
       </div>
-    </ModalShell>,
-    document.body,
+    </ModalShell>
   );
 }

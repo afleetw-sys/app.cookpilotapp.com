@@ -1,6 +1,6 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase/cloudFunctions";
-import type { EditRecipeResponse, RecipeData, ShareLinkResult, SharedRecipePayload } from "@/lib/cookpilot/types";
+import type { EditRecipeResponse, Ingredient, RecipeData, ShareLinkResult, SharedRecipePayload } from "@/lib/cookpilot/types";
 import type { ClientRecipeExtraction } from "@/lib/cookpilot/clientExtraction";
 import type { SocialPlatform } from "@/lib/cookpilot/socialPlatform";
 
@@ -67,6 +67,12 @@ const editRecipeCallable = httpsCallable<
     recipeId: string;
     recipe: RecipeData;
     userRequest: string;
+    selectedIngredient?: {
+      name: string;
+      index: number;
+      amount?: string;
+      unit?: string;
+    };
   },
   EditRecipeResponse
 >(functions, "editRecipe");
@@ -131,8 +137,27 @@ export async function editRecipe(params: {
   recipeId: string;
   recipe: RecipeData;
   userRequest: string;
+  selectedIngredient?: {
+    ingredient: Ingredient;
+    index: number;
+  } | null;
 }): Promise<EditRecipeResponse> {
-  const result = await editRecipeCallable(params);
+  const selected = params.selectedIngredient;
+  const result = await editRecipeCallable({
+    recipeId: params.recipeId,
+    recipe: params.recipe,
+    userRequest: params.userRequest,
+    ...(selected
+      ? {
+          selectedIngredient: {
+            name: selected.ingredient.name,
+            index: selected.index,
+            ...(selected.ingredient.amount ? { amount: selected.ingredient.amount } : {}),
+            ...(selected.ingredient.unit ? { unit: selected.ingredient.unit } : {}),
+          },
+        }
+      : {}),
+  });
   return result.data;
 }
 

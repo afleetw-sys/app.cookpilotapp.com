@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
-type ModalVariant = "import" | "settings" | "paywall";
+type ModalVariant = "import" | "settings" | "paywall" | "measurements";
 
 function cardClass(variant: ModalVariant): string {
   if (variant === "paywall") return "cp-modal-card cp-paywall-card";
@@ -20,8 +21,10 @@ export function ModalShell({
   children: ReactNode;
   "aria-labelledby"?: string;
 }) {
-  return (
-    <div aria-hidden="true" className="cp-modal-backdrop" onClick={onClose}>
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="cp-modal-backdrop" onClick={onClose}>
       <div
         aria-labelledby={ariaLabelledBy}
         aria-modal="true"
@@ -31,6 +34,7 @@ export function ModalShell({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

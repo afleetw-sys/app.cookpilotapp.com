@@ -1,20 +1,35 @@
 import type { RecipeThemeSeedColors } from "@/lib/cookpilot/types";
 
+type RGB = [number, number, number];
+
 export type RecipePalette = {
   background: string;
   backgroundDark: string;
   primaryAccent: string;
+  primaryAccentDark: string;
+  textButtonFill: string;
+  textButtonFillDark: string;
   chipFill: string;
+  chipFillDark: string;
   chipText: string;        // chipAccentOnChipFill — text on chip fill
+  chipTextDark: string;
   chipAccent: string;      // the chip accent color (may use secondary hue)
+  chipAccentDark: string;
   chipAccentOnBg: string;  // accessible chip text on light page background
   chipAccentOnBgDark: string; // accessible chip text on dark page background
   inputFill: string;       // tinted input background (light)
   inputFillDark: string;   // tinted input background (dark)
   onPrimary: string;       // text/icon on primaryAccent buttons
+  onPrimaryDark: string;
+  primaryBaseMix: string;
+  primaryBaseMixDark: string;
+  primaryTopGlowMix: string;
+  primaryTopGlowMixDark: string;
+  primaryTopGlowSoftMix: string;
+  primaryTopGlowSoftMixDark: string;
 };
 
-function hsbToRgb(h: number, s: number, b: number): [number, number, number] {
+function hsbToRgb(h: number, s: number, b: number): RGB {
   const i = Math.floor(h * 6);
   const f = h * 6 - i;
   const p = b * (1 - s);
@@ -29,23 +44,27 @@ function hsbToRgb(h: number, s: number, b: number): [number, number, number] {
     case 4: r = t; g = p; bl = b; break;
     default: r = b; g = p; bl = q; break;
   }
-  return [Math.round(r * 255), Math.round(g * 255), Math.round(bl * 255)];
+  return [r * 255, g * 255, bl * 255];
 }
 
 function toHex(r: number, g: number, b: number): string {
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+  const hex = (channel: number) =>
+    Math.min(255, Math.max(0, Math.round(channel)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
 }
 
 function mixRgb(
-  c1: [number, number, number],
-  c2: [number, number, number],
+  c1: RGB,
+  c2: RGB,
   t: number,
-): [number, number, number] {
+): RGB {
   const f = Math.max(0, Math.min(t, 1));
   return [
-    Math.round(c1[0] * (1 - f) + c2[0] * f),
-    Math.round(c1[1] * (1 - f) + c2[1] * f),
-    Math.round(c1[2] * (1 - f) + c2[2] * f),
+    c1[0] * (1 - f) + c2[0] * f,
+    c1[1] * (1 - f) + c2[1] * f,
+    c1[2] * (1 - f) + c2[2] * f,
   ];
 }
 
@@ -58,45 +77,81 @@ function relativeLuminance(r: number, g: number, b: number): number {
 }
 
 function contrastRatio(
-  c1: [number, number, number],
-  c2: [number, number, number],
+  c1: RGB,
+  c2: RGB,
 ): number {
   const l1 = relativeLuminance(...c1);
   const l2 = relativeLuminance(...c2);
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
-// Returns the darkest accessible shade of [h, s] that achieves >= 4.5:1 on bg.
-// Starts at the given brightness and steps darker until contrast is met.
-function accessibleDarkShade(
-  h: number,
-  s: number,
-  startB: number,
-  bg: [number, number, number],
-): [number, number, number] {
-  let bri = Math.max(startB, 0.15);
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const rgb = hsbToRgb(h, Math.min(s + 0.06, 0.99), bri);
-    if (contrastRatio(rgb, bg) >= 4.5) return rgb;
-    bri = Math.max(bri - 0.05, 0.05);
-  }
-  return [17, 17, 17]; // near-black fallback
+function blendRgb(
+  c1: RGB,
+  c2: RGB,
+  t: number,
+): RGB {
+  return mixRgb(c1, c2, t);
 }
 
-// Returns the brightest accessible shade of [h, s] that achieves >= 4.5:1 on bg.
-function accessibleBrightShade(
+function foregroundColor(
+  bg: RGB,
+  minRatio = 3,
+): RGB {
+  const black: RGB = [0, 0, 0];
+  const white: RGB = [255, 255, 255];
+  const blackRatio = contrastRatio(black, bg);
+  const whiteRatio = contrastRatio(white, bg);
+
+  if (blackRatio >= minRatio || whiteRatio >= minRatio) {
+    return blackRatio >= whiteRatio ? black : white;
+  }
+
+  return blackRatio >= whiteRatio ? black : white;
+}
+
+function adjustForContrast(
+  foreground: RGB,
+  background: RGB,
+  minRatio = 4.5,
+): RGB {
+  if (contrastRatio(foreground, background) >= minRatio) return foreground;
+
+  const black: RGB = [0, 0, 0];
+  const white: RGB = [255, 255, 255];
+  const blackRatio = contrastRatio(black, background);
+  const whiteRatio = contrastRatio(white, background);
+  const target = whiteRatio >= blackRatio ? white : black;
+  const bestPossible = Math.max(blackRatio, whiteRatio);
+  if (bestPossible < minRatio) return target;
+
+  let low = 0;
+  let high = 1;
+  let best = target;
+
+  for (let attempt = 0; attempt < 18; attempt++) {
+    const mid = (low + high) / 2;
+    const candidate = blendRgb(foreground, target, mid);
+    if (contrastRatio(candidate, background) >= minRatio) {
+      best = candidate;
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  return best;
+}
+
+function accessibleTintForScheme(
   h: number,
   s: number,
-  startB: number,
-  bg: [number, number, number],
-): [number, number, number] {
-  let bri = Math.min(startB, 0.95);
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const rgb = hsbToRgb(h, Math.max(s - 0.06, 0.3), bri);
-    if (contrastRatio(rgb, bg) >= 4.5) return rgb;
-    bri = Math.min(bri + 0.05, 1.0);
+  b: number,
+  scheme: "light" | "dark",
+): RGB {
+  if (scheme === "light") {
+    return hsbToRgb(h, Math.min(s * 1.05, 0.95), Math.max(b * 0.75, 0.25));
   }
-  return [238, 238, 238]; // near-white fallback
+  return hsbToRgb(h, Math.min(s * 0.25, 0.25), Math.min(Math.max(b + 0.65, 0.9), 1));
 }
 
 /** Matches iOS `inputFillFromBackground` in ThemeExtraction.swift */
@@ -105,7 +160,7 @@ function inputFillFromBackground(
   s: number,
   b: number,
   isDark: boolean,
-): [number, number, number] {
+): RGB {
   const newS = Math.min(s + 0.05, 0.25);
   const newB = isDark ? Math.min(b + 0.02, 0.19) : Math.max(b - 0.04, 0.88);
   return hsbToRgb(h, newS, newB);
@@ -123,10 +178,16 @@ export function buildRecipePalette(seed: RecipeThemeSeedColors): RecipePalette {
   const backgroundDark = toHex(...darkBgRgb);
 
   // Primary accent (clamped, matches Swift lightPrimaryS/B)
+  const minBrightnessDark = 0.45;
+  const satScaleDark = 0.88;
   const lightPrimaryS = Math.min(primaryS, 0.92);
   const lightPrimaryB = Math.max(Math.min(primaryB, 0.88), 0.38);
+  const darkPrimaryS = lightPrimaryS * satScaleDark;
+  const darkPrimaryB = Math.max(lightPrimaryB, minBrightnessDark);
   const primaryAccentRgb = hsbToRgb(primaryH, lightPrimaryS, lightPrimaryB);
+  const primaryAccentDarkRgb = hsbToRgb(primaryH, darkPrimaryS, darkPrimaryB);
   const primaryAccent = toHex(...primaryAccentRgb);
+  const primaryAccentDark = toHex(...primaryAccentDarkRgb);
 
   // Chip hue: secondary if hue distance >= 0.10, else primary (matches Swift)
   const hueDiff = Math.min(Math.abs(secondaryH - primaryH), 1 - Math.abs(secondaryH - primaryH));
@@ -137,27 +198,29 @@ export function buildRecipePalette(seed: RecipeThemeSeedColors): RecipePalette {
 
   const lightChipS = Math.min(Math.max(chipS, 0.45), 0.9);
   const lightChipB = Math.max(Math.min(chipB, 0.88), 0.4);
+  const darkChipS = lightChipS * satScaleDark;
+  const darkChipB = Math.max(lightChipB, minBrightnessDark);
   const chipAccentRgb = hsbToRgb(chipH, lightChipS, lightChipB);
+  const chipAccentDarkRgb = hsbToRgb(chipH, darkChipS, darkChipB);
   const chipAccent = toHex(...chipAccentRgb);
+  const chipAccentDark = toHex(...chipAccentDarkRgb);
 
   // Chip fill = mix(lightBg, chipAccent, 14%)
   const chipFillRgb = mixRgb(lightBgRgb, chipAccentRgb, 0.14);
+  const chipFillDarkRgb = mixRgb(darkBgRgb, chipAccentDarkRgb, 0.14);
   const chipFill = toHex(...chipFillRgb);
+  const chipFillDark = toHex(...chipFillDarkRgb);
 
-  // Chip text (chipAccentOnChipFill): dark shade verified for 4.5:1 contrast on chipFill
-  const darkChipRgb = hsbToRgb(chipH, Math.min(lightChipS + 0.08, 0.99), Math.max(lightChipB - 0.38, 0.18));
-  const fillLum = relativeLuminance(...chipFillRgb);
-  const darkLum = relativeLuminance(...darkChipRgb);
-  const chipFillContrast = (Math.max(fillLum, darkLum) + 0.05) / (Math.min(fillLum, darkLum) + 0.05);
-  const chipText = chipFillContrast >= 4.5 ? toHex(...darkChipRgb) : "#111111";
+  const chipText = toHex(...adjustForContrast(chipAccentRgb, chipFillRgb, 4.5));
+  const chipTextDark = toHex(...adjustForContrast(chipAccentDarkRgb, chipFillDarkRgb, 4.5));
 
-  // chipAccentOnBg: accessible chip color on light page background
-  const chipOnBgRgb = accessibleDarkShade(chipH, lightChipS, lightChipB - 0.30, lightBgRgb);
-  const chipAccentOnBg = toHex(...chipOnBgRgb);
+  const textButtonFillRgb = adjustForContrast(primaryAccentRgb, lightBgRgb, 4.5);
+  const textButtonFillDarkRgb = adjustForContrast(primaryAccentDarkRgb, darkBgRgb, 4.5);
+  const textButtonFill = toHex(...textButtonFillRgb);
+  const textButtonFillDark = toHex(...textButtonFillDarkRgb);
 
-  // chipAccentOnBgDark: accessible chip color on dark page background (bright shade)
-  const chipOnBgDarkRgb = accessibleBrightShade(chipH, lightChipS, lightChipB + 0.10, darkBgRgb);
-  const chipAccentOnBgDark = toHex(...chipOnBgDarkRgb);
+  const chipAccentOnBg = toHex(...accessibleTintForScheme(chipH, lightChipS, lightChipB, "light"));
+  const chipAccentOnBgDark = toHex(...accessibleTintForScheme(chipH, darkChipS, darkChipB, "dark"));
 
   // inputFill: derived from recipe background (matches iOS ThemeExtraction)
   const inputFillRgb = inputFillFromBackground(primaryH, 0.07, 0.97, false);
@@ -166,23 +229,40 @@ export function buildRecipePalette(seed: RecipeThemeSeedColors): RecipePalette {
   const inputFillDarkRgb = mixRgb(darkBgRgb, primaryAccentRgb, 0.07);
   const inputFillDark = toHex(...inputFillDarkRgb);
 
-  // onPrimary: white or black for WCAG AA contrast on primaryAccent
-  const whiteLum = 1.0;
-  const accentLum = relativeLuminance(...primaryAccentRgb);
-  const whiteContrast = (Math.max(whiteLum, accentLum) + 0.05) / (Math.min(whiteLum, accentLum) + 0.05);
-  const onPrimary = whiteContrast >= 4.5 ? "#ffffff" : "#111111";
+  const onPrimary = toHex(...foregroundColor(textButtonFillRgb, 3));
+  const onPrimaryDark = toHex(...foregroundColor(textButtonFillDarkRgb, 3));
+
+  const primaryBaseMix = `${(6 + lightPrimaryS * 3).toFixed(3)}%`;
+  const primaryBaseMixDark = `${(6 + darkPrimaryS * 3).toFixed(3)}%`;
+  const primaryTopGlowMix = `${(6 + lightPrimaryB * 2).toFixed(3)}%`;
+  const primaryTopGlowMixDark = `${(6 + darkPrimaryB * 2).toFixed(3)}%`;
+  const primaryTopGlowSoftMix = `${((6 + lightPrimaryB * 2) * 0.2).toFixed(3)}%`;
+  const primaryTopGlowSoftMixDark = `${((6 + darkPrimaryB * 2) * 0.2).toFixed(3)}%`;
 
   return {
     background,
     backgroundDark,
     primaryAccent,
+    primaryAccentDark,
+    textButtonFill,
+    textButtonFillDark,
     chipFill,
+    chipFillDark,
     chipText,
+    chipTextDark,
     chipAccent,
+    chipAccentDark,
     chipAccentOnBg,
     chipAccentOnBgDark,
     inputFill,
     inputFillDark,
     onPrimary,
+    onPrimaryDark,
+    primaryBaseMix,
+    primaryBaseMixDark,
+    primaryTopGlowMix,
+    primaryTopGlowMixDark,
+    primaryTopGlowSoftMix,
+    primaryTopGlowSoftMixDark,
   };
 }

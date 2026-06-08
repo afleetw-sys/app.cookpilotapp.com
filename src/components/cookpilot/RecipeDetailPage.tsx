@@ -5,11 +5,13 @@ import {
   ArrowClockwise,
   ArrowLeft,
   ArrowUpRight,
+  Check,
   Fire,
   FloppyDisk,
   PencilSimple,
   Plus,
   ShareNetwork,
+  Sparkle,
   Timer,
   Trash,
   X,
@@ -31,9 +33,9 @@ import { AILoadingOverlay } from "@/components/ui/AILoadingOverlay";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
-  IngredientMeasurementDropdown,
+  IngredientMeasurementButton,
+  IngredientMeasurementDialog,
   IngredientsServingsControl,
-  ServingsMultiplierPills,
 } from "@/components/cookpilot/IngredientsSectionToolbar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StateBlock } from "@/components/ui/StateBlock";
@@ -66,7 +68,6 @@ import {
 import { clearPendingImportDraft, loadPendingImportDraft } from "@/lib/cookpilot/importDraft";
 import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
 import { useResolvedRecipeCoverSrc } from "@/lib/cookpilot/useResolvedRecipeCoverSrc";
-import { useClickOutside } from "@/lib/useClickOutside";
 import { editRecipe, createShareLink, deleteShareLink } from "@/lib/cookpilot/functions";
 import { buildShareLinkPayload } from "@/lib/cookpilot/sharedRecipe";
 import { defaultAIEditSuggestions } from "@/lib/cookpilot/editSuggestions";
@@ -74,7 +75,7 @@ import { knownTagsFromRecipes } from "@/lib/cookpilot/recipeBrowse";
 import { getRecipesBrowseSessionCache, removeRecipeFromBrowseSessionCache, syncSavedRecipeToBrowseSessionCache, updateRecipeSummaryInBrowseSessionCache, upsertSavedRecipeInBrowseSessionCache } from "@/lib/cookpilot/recipesBrowseSessionCache";
 import { scaleRecipe } from "@/lib/cookpilot/scaling";
 import { buildRecipePalette } from "@/lib/cookpilot/theme";
-import type { EditRecipeResponse, RecipeData, SavedRecipe } from "@/lib/cookpilot/types";
+import type { EditRecipeResponse, Ingredient, RecipeData, SavedRecipe } from "@/lib/cookpilot/types";
 import { auth } from "@/lib/firebase/client";
 import { db } from "@/lib/firebase/db";
 
@@ -84,6 +85,11 @@ type EditState = {
   error: string | null;
   refusal: string | null;
   result: EditRecipeResponse | null;
+};
+
+type SelectedIngredientForAI = {
+  ingredient: Ingredient;
+  index: number;
 };
 
 const SYSTEM_TAGS = new Set([
@@ -178,7 +184,7 @@ function orderedTags(recipe: RecipeData) {
 
 function parseServingsInput(value: string): number | null {
   const trimmed = value.trim();
-  if (trimmed.length === 0) return 1;
+  if (trimmed.length === 0) return null;
 
   const parsed = Number.parseInt(trimmed, 10);
   if (!Number.isFinite(parsed) || parsed < 1) return null;
@@ -244,22 +250,20 @@ function renumberInstructions(recipe: RecipeData): RecipeData {
 
 function DetailSection({
   title,
-  titleAddon,
-  titleBelow,
+  titleAccessory,
   action,
   bare = false,
   children,
 }: {
   title: string;
-  titleAddon?: React.ReactNode;
-  titleBelow?: React.ReactNode;
+  titleAccessory?: React.ReactNode;
   action?: React.ReactNode;
   bare?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section className={bare ? "cp-detail__section-card" : "cp-panel cp-panel--section"}>
-      <SectionHeader title={title} titleAddon={titleAddon} titleBelow={titleBelow}>
+      <SectionHeader title={title} titleAccessory={titleAccessory}>
         {action}
       </SectionHeader>
       {children}
@@ -376,13 +380,14 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     handleImageError: handleDetailImageError,
   } = useResolvedRecipeCoverSrc(selectedRecipe?.recipe.imageURL, recipeId);
   const [measurementMode, setMeasurementMode] = useState<MeasurementMode>("original");
-  const [showMeasurementMenu, setShowMeasurementMenu] = useState(false);
+  const [showMeasurementDialog, setShowMeasurementDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedIngredientForAI, setSelectedIngredientForAI] =
+    useState<SelectedIngredientForAI | null>(null);
   const [deletingRecipe, setDeletingRecipe] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [localImagePreview, setLocalImagePreview] = useState<string | null>(null);
   const [imageUploadError, setImageUploadError] = useState<string | null>(null);
-  const measurementMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const detailInitializedRef = useRef(false);
   const [editState, setEditState] = useState<EditState>({
@@ -399,12 +404,14 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   // Flips to false on the first Save, which triggers the Firestore subscription.
   const [isPendingDraft, setIsPendingDraft] = useState(isDraft);
   const [newTag, setNewTag] = useState("");
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [allKnownTags, setAllKnownTags] = useState<string[]>([]);
   const [saveEditError, setSaveEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const tagInputRef = useRef<HTMLDivElement>(null);
 
   // Subscribe to real-time usage updates — fires whenever any platform writes a new count.
   // Falls back to a one-shot load for anonymous users (no Firestore listener needed).
@@ -451,7 +458,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           setMeasurementMode(
             measurementModeFromRaw(recipe.preferredIngredientMeasurementRaw),
           );
-          setShowMeasurementMenu(false);
+          setShowMeasurementDialog(false);
           setLoadingRecipeDetail(false);
           return;
         }
@@ -517,6 +524,17 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   }, [user]);
 
   useEffect(() => {
+    if (!showTagDropdown) return;
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Node && tagInputRef.current?.contains(target)) return;
+      setShowTagDropdown(false);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [showTagDropdown]);
+
+  useEffect(() => {
     if (!user || !isEditingRecipe) return;
     if (getRecipesBrowseSessionCache(user.uid)) return;
 
@@ -571,8 +589,6 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
 
     return () => { cancelled = true; };
   }, [user, selectedRecipe, recipeId, isEditingRecipe, uploadingImage, localImagePreview, resolvedDetailImageSrc]);
-
-  useClickOutside(measurementMenuRef, useCallback(() => setShowMeasurementMenu(false), []));
 
   async function handleDeleteRecipe() {
     if (!user || !selectedRecipe) return;
@@ -710,6 +726,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         recipeId: selectedRecipe.id,
         recipe: baseRecipeForEdit,
         userRequest: prompt,
+        selectedIngredient: selectedIngredientForAI,
       });
 
       if (result.outcome === "refused") {
@@ -745,6 +762,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           refusal: null,
           result,
         });
+        setSelectedIngredientForAI(null);
         return;
       }
 
@@ -767,6 +785,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         refusal: null,
         result,
       });
+      setSelectedIngredientForAI(null);
     } catch (error) {
       console.error(error);
       setEditState((current) => ({
@@ -785,6 +804,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     setDeleteError(null);
     setImageUploadError(null);
     setLocalImagePreview(null);
+    setSelectedIngredientForAI(null);
     setIsEditingRecipe(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
     setTimeout(() => {
@@ -800,7 +820,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     setImageUploadError(null);
     setIsEditingRecipe(false);
     setEditDraft(null);
+    setSelectedIngredientForAI(null);
     setNewTag("");
+    setShowTagDropdown(false);
     setSaveEditError(null);
     setDeleteError(null);
     if (isPendingDraft) {
@@ -879,6 +901,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       setLocalImagePreview(null);
       setIsEditingRecipe(false);
       setEditDraft(null);
+      setSelectedIngredientForAI(null);
     } catch (error) {
       console.error(error);
       setSaveEditError("We couldn’t save those recipe edits. Please try again.");
@@ -911,6 +934,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       Array.from(new Set([...current, trimmed])).sort((left, right) => left.localeCompare(right)),
     );
     setNewTag("");
+    setShowTagDropdown(true);
   }
 
   function chooseTagSuggestion(tag: string) {
@@ -919,6 +943,17 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     if (existingTags.has(tag)) return;
     updateDraftTags([...(editDraft.recipe.tags ?? []), tag]);
     setNewTag("");
+    setShowTagDropdown(true);
+  }
+
+  function toggleDraftTag(tag: string) {
+    if (!editDraft) return;
+    const isApplied = new Set([...(editDraft.recipe.tags ?? []), ...(editDraft.recipe.systemTags ?? [])]).has(tag);
+    if (isApplied) {
+      removeDraftTag(tag);
+    } else {
+      chooseTagSuggestion(tag);
+    }
   }
 
   function removeDraftTag(tag: string) {
@@ -1117,13 +1152,12 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     measurementMode,
     measurementDominance,
   );
-  const canShowServingMultipliers =
-    !isEditingRecipe && allScaledIngredients.length > 0 && baseServings > 0;
   const recipeTags = Array.from(new Set(orderedTags(baseRecipe)));
   const appliedTagSet = new Set(recipeTags);
-  const filteredTagSuggestions = allKnownTags.filter(
+  const dropdownTagOptions = Array.from(new Set([...recipeTags, ...allKnownTags]))
+    .sort((left, right) => left.localeCompare(right));
+  const filteredTagSuggestions = dropdownTagOptions.filter(
     (tag) =>
-      !appliedTagSet.has(tag) &&
       shouldOfferTagSuggestion(tag, baseRecipe.title) &&
       (!newTag.trim() || tag.toLowerCase().includes(newTag.trim().toLowerCase())),
   );
@@ -1138,14 +1172,27 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         "--recipe-bg": recipePalette.background,
         "--recipe-bg-dark": recipePalette.backgroundDark,
         "--recipe-chip-fill": recipePalette.chipFill,
+        "--recipe-chip-fill-dark": recipePalette.chipFillDark,
         "--recipe-chip-text": recipePalette.chipText,
-        "--recipe-accent": recipePalette.primaryAccent,
+        "--recipe-chip-text-dark": recipePalette.chipTextDark,
+        "--recipe-primary-accent": recipePalette.primaryAccent,
+        "--recipe-primary-accent-dark": recipePalette.primaryAccentDark,
+        "--recipe-accent": recipePalette.textButtonFill,
+        "--recipe-accent-dark": recipePalette.textButtonFillDark,
         "--recipe-chip-accent": recipePalette.chipAccent,
+        "--recipe-chip-accent-dark": recipePalette.chipAccentDark,
         "--recipe-chip-accent-on-bg": recipePalette.chipAccentOnBg,
         "--recipe-chip-accent-on-bg-dark": recipePalette.chipAccentOnBgDark,
         "--recipe-input-fill": recipePalette.inputFill,
         "--recipe-input-fill-dark": recipePalette.inputFillDark,
         "--recipe-on-primary": recipePalette.onPrimary,
+        "--recipe-on-primary-dark": recipePalette.onPrimaryDark,
+        "--recipe-primary-base-mix": recipePalette.primaryBaseMix,
+        "--recipe-primary-base-mix-dark": recipePalette.primaryBaseMixDark,
+        "--recipe-primary-top-glow-mix": recipePalette.primaryTopGlowMix,
+        "--recipe-primary-top-glow-mix-dark": recipePalette.primaryTopGlowMixDark,
+        "--recipe-primary-top-glow-soft-mix": recipePalette.primaryTopGlowSoftMix,
+        "--recipe-primary-top-glow-soft-mix-dark": recipePalette.primaryTopGlowSoftMixDark,
       } as React.CSSProperties) : undefined}
     >
       <div className="cp-detail__topbar">
@@ -1224,6 +1271,86 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                 placeholder="https://example.com/recipe"
                 value={editDraft.sourceURL === "photo_upload" ? "" : (editDraft.sourceURL ?? "")}
               />
+              <div className="cp-field cp-tag-combobox-field">
+                <span className="cp-field__label">Tag</span>
+                <div className="cp-tag-combobox" ref={tagInputRef}>
+                  <div
+                    className="cp-tag-combobox__input"
+                    onClick={() => setShowTagDropdown(true)}
+                    role="presentation"
+                  >
+                    {recipeTags.map((tag) => (
+                      <button
+                        aria-label={`Remove ${tag} tag`}
+                        className="cp-tag-combobox__chip"
+                        key={tag}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeDraftTag(tag);
+                        }}
+                        type="button"
+                      >
+                        <TagIconGlyph tag={tag} size={13} />
+                        <span>{tag}</span>
+                        <X size={12} weight="bold" />
+                      </button>
+                    ))}
+                    <input
+                      aria-expanded={showTagDropdown}
+                      aria-label="Tags"
+                      className="cp-tag-combobox__text-input"
+                      onChange={(event) => {
+                        setNewTag(event.target.value);
+                        setShowTagDropdown(true);
+                      }}
+                      onFocus={() => setShowTagDropdown(true)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addDraftTag();
+                        }
+                        if (event.key === "Escape") {
+                          setShowTagDropdown(false);
+                        }
+                      }}
+                      placeholder={recipeTags.length > 0 ? "" : "Add tags"}
+                      value={newTag}
+                    />
+                  </div>
+                  {showTagDropdown ? (
+                    <div className="cp-tag-combobox__menu" aria-label="Tag options">
+                      {shouldOfferCreateTag ? (
+                        <button
+                          className="cp-tag-combobox__option cp-tag-combobox__option--create"
+                          onClick={addDraftTag}
+                          type="button"
+                        >
+                          <Plus size={14} weight="bold" />
+                          <span>Add “{newTag.trim()}”</span>
+                        </button>
+                      ) : null}
+                      {filteredTagSuggestions.map((tag) => {
+                        const isSelected = appliedTagSet.has(tag);
+                        return (
+                          <button
+                            className={`cp-tag-combobox__option ${isSelected ? "is-selected" : ""}`.trim()}
+                            key={tag}
+                            onClick={() => toggleDraftTag(tag)}
+                            type="button"
+                          >
+                            <TagIconGlyph tag={tag} size={14} />
+                            <span>{tag}</span>
+                            {isSelected ? <Check className="cp-tag-combobox__check" size={15} weight="bold" /> : null}
+                          </button>
+                        );
+                      })}
+                      {!shouldOfferCreateTag && filteredTagSuggestions.length === 0 ? (
+                        <p className="cp-tag-combobox__empty">No tags found</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -1397,119 +1524,11 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
 
       {saveEditError ? <StateBlock message={saveEditError} title="Save issue" tone="error" /> : null}
 
-      {isEditingRecipe && editDraft ? (
-        <section className="cp-detail__section-card cp-detail__section-card--tags">
-          <SectionHeader title="Tags" />
-          <div className="cp-detail__tags cp-detail__tags--editable">
-            {recipeTags.map((tag, index) => (
-              <RecipeTagChip
-                isEditing
-                isSystemTag={SYSTEM_TAGS.has(tag)}
-                key={tag}
-                onRemove={() => removeDraftTag(tag)}
-                tag={tag}
-                visualIndex={index}
-              />
-            ))}
-          </div>
-          <div className="cp-tag-editor">
-            <input
-              aria-label="New tag"
-              className="cp-edit-row__input"
-              onChange={(event) => setNewTag(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addDraftTag();
-                }
-              }}
-              placeholder="Add a tag"
-              value={newTag}
-            />
-            <Button disabled={!newTag.trim()} onClick={addDraftTag} size="compact" variant="secondary">
-              <Plus size={15} />
-              Add tag
-            </Button>
-          </div>
-          {(shouldOfferCreateTag || filteredTagSuggestions.length > 0) ? (
-            <div className="cp-tag-suggestions" aria-label="Tag options">
-              {shouldOfferCreateTag ? (
-                <button
-                  className="cp-tag-suggestion cp-tag-suggestion--create"
-                  onClick={addDraftTag}
-                  type="button"
-                >
-                  <Plus size={13} weight="bold" />
-                  Create “{newTag.trim()}”
-                </button>
-              ) : null}
-              {filteredTagSuggestions.map((tag) => (
-                <button
-                  className="cp-tag-suggestion"
-                  key={tag}
-                  onClick={() => chooseTagSuggestion(tag)}
-                  type="button"
-                >
-                  <TagIconGlyph tag={tag} size={13} />
-                  {tag}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {/* Servings control shown above ingredients on mobile only */}
-      {!isEditingRecipe && currentServings ? (
-        <div className="cp-detail__mobile-servings">
-          <IngredientsServingsControl
-            currentServings={currentServings}
-            onDecrement={() => setServingsOverride(Math.max(1, currentServings - 1))}
-            onIncrement={() => setServingsOverride(currentServings + 1)}
-            onServingsInput={(value) => {
-              const next = parseServingsInput(value);
-              if (next !== null) setServingsOverride(next);
-            }}
-          />
-          {canShowServingMultipliers ? (
-            <ServingsMultiplierPills
-              baseServings={baseServings}
-              currentServings={currentServings}
-              onSelectServings={setServingsOverride}
-            />
-          ) : null}
-        </div>
-      ) : null}
-
       <div className="cp-detail__grid">
         <DetailSection
           bare={isEditingRecipe}
           title="Ingredients"
-          titleAddon={<span className="cp-section-header__count">{allScaledIngredients.length}</span>}
-          titleBelow={
-            <IngredientMeasurementDropdown
-              measurementMenuRef={measurementMenuRef}
-              measurementMode={measurementMode}
-              onSelectMeasurementMode={(mode) => {
-                setMeasurementMode(mode);
-                setShowMeasurementMenu(false);
-                setSelectedRecipe((current) =>
-                  current
-                    ? {
-                        ...current,
-                        preferredIngredientMeasurementRaw:
-                          mode === "original" ? null : mode,
-                      }
-                    : current,
-                );
-                void persistIngredientPreferences({
-                  preferredIngredientMeasurementRaw: mode === "original" ? null : mode,
-                });
-              }}
-              onToggleMeasurementMenu={() => setShowMeasurementMenu((current) => !current)}
-              showMeasurementMenu={showMeasurementMenu}
-            />
-          }
+          titleAccessory={<IngredientMeasurementButton onOpen={() => setShowMeasurementDialog(true)} />}
           action={
             <div className="cp-ingredients-header__servings-column">
               <IngredientsServingsControl
@@ -1540,13 +1559,6 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                   }
                 }}
               />
-              {canShowServingMultipliers ? (
-                <ServingsMultiplierPills
-                  baseServings={baseServings}
-                  currentServings={currentServings}
-                  onSelectServings={setServingsOverride}
-                />
-              ) : null}
             </div>
           }
         >
@@ -1571,18 +1583,46 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                             className="cp-edit-row__input"
                             onChange={(event) => {
                               const parsed = parseIngredientText(event.target.value);
+                              const updatedIngredient = { ...ingredient, ...parsed };
                               updateDraftIngredient(section.id, ingredient.id, (current) => ({
                                 ...current,
                                 ...parsed,
                               }));
+                              setSelectedIngredientForAI((current) =>
+                                current?.ingredient.id === ingredient.id
+                                  ? { ...current, ingredient: updatedIngredient }
+                                  : current,
+                              );
                             }}
                             placeholder="e.g. 2 cups flour, sifted"
                             value={ingredientDisplayLine(ingredient)}
                           />
                           <button
+                            aria-label={`Ask AI about ingredient ${globalIndex + 1}`}
+                            className={`cp-edit-row__ai ${selectedIngredientForAI?.ingredient.id === ingredient.id ? "is-selected" : ""}`.trim()}
+                            onClick={() => {
+                              setSelectedIngredientForAI({ ingredient, index: globalIndex });
+                              setEditState((current) => ({ ...current, error: null, refusal: null, result: null }));
+                              requestAnimationFrame(() => {
+                                document.getElementById("inlineAskingAbout")
+                                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                document.querySelector<HTMLTextAreaElement>(".cp-ai-edit-form__input")?.focus();
+                              });
+                            }}
+                            title="Ask AI about this ingredient"
+                            type="button"
+                          >
+                            <Sparkle size={15} />
+                          </button>
+                          <button
                             aria-label={`Delete ingredient ${globalIndex + 1}`}
                             className="cp-edit-row__delete"
-                            onClick={() => removeDraftIngredient(section.id, ingredient.id)}
+                            onClick={() => {
+                              removeDraftIngredient(section.id, ingredient.id);
+                              setSelectedIngredientForAI((current) =>
+                                current?.ingredient.id === ingredient.id ? null : current,
+                              );
+                            }}
                             type="button"
                           >
                             <Trash size={16} />
@@ -1641,6 +1681,28 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           ) : null}
         </DetailSection>
 
+        {showMeasurementDialog ? (
+          <IngredientMeasurementDialog
+            measurementMode={measurementMode}
+            onClose={() => setShowMeasurementDialog(false)}
+            onSelectMeasurementMode={(mode) => {
+              setMeasurementMode(mode);
+              setShowMeasurementDialog(false);
+              setSelectedRecipe((current) =>
+                current
+                  ? {
+                      ...current,
+                      preferredIngredientMeasurementRaw: mode === "original" ? null : mode,
+                    }
+                  : current,
+              );
+              void persistIngredientPreferences({
+                preferredIngredientMeasurementRaw: mode === "original" ? null : mode,
+              });
+            }}
+          />
+        ) : null}
+
         <DetailSection bare={isEditingRecipe} title="Instructions">
           {displayedRecipe.instructionSections.map((section) => (
             <div className="cp-detail__section-block" key={section.id}>
@@ -1692,9 +1754,11 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       {isEditingRecipe ? (
         <AIEditSection
           editState={editState}
+          onClearSelectedIngredient={() => setSelectedIngredientForAI(null)}
           onApplyPrompt={(prompt) => void handleEditRecipe(prompt)}
           onPromptChange={(prompt) => setEditState((current) => ({ ...current, prompt }))}
           onUpgradeTapped={() => setShowPaywall(true)}
+          selectedIngredient={selectedIngredientForAI?.ingredient ?? null}
           suggestions={aiEditSuggestions}
           usageInfo={usageInfo}
         />

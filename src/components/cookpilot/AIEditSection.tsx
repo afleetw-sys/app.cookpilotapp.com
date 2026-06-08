@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowClockwise, ArrowUpRight, Sparkle } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowUpRight, Sparkle, X } from "@phosphor-icons/react";
 import type { FormEvent } from "react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StateBlock } from "@/components/ui/StateBlock";
-import type { EditRecipeResponse } from "@/lib/cookpilot/types";
+import { ingredientDisplayLine } from "@/lib/cookpilot/ingredientParsing";
+import type { EditRecipeResponse, Ingredient } from "@/lib/cookpilot/types";
 import type { UsageInfo } from "@/lib/cookpilot/usageTracking";
 import { formatResetDate } from "@/lib/cookpilot/usageTracking";
 
@@ -16,22 +17,33 @@ export type AIEditSectionState = {
   result: EditRecipeResponse | null;
 };
 
+const INGREDIENT_QUICK_SUGGESTIONS = [
+  "I don't have this ingredient",
+  "Use dried instead of fresh",
+  "Remove this ingredient",
+];
+
 export function AIEditSection({
   editState,
   onPromptChange,
   onApplyPrompt,
+  onClearSelectedIngredient,
   onUpgradeTapped,
+  selectedIngredient,
   suggestions,
   usageInfo,
 }: {
   editState: AIEditSectionState;
   onPromptChange: (prompt: string) => void;
   onApplyPrompt: (prompt?: string) => void;
+  onClearSelectedIngredient?: () => void;
   onUpgradeTapped: () => void;
+  selectedIngredient?: Ingredient | null;
   suggestions: string[];
   usageInfo: UsageInfo | null;
 }) {
   const trimmedPrompt = editState.prompt.trim();
+  const displayedSuggestions = selectedIngredient ? INGREDIENT_QUICK_SUGGESTIONS : suggestions;
   const isOutOfEdits =
     usageInfo !== null && !usageInfo.isSubscribed && (usageInfo.remaining ?? 0) <= 0;
   const isDisabled = editState.loading || isOutOfEdits;
@@ -76,6 +88,27 @@ export function AIEditSection({
         </div>
       ) : null}
 
+      {selectedIngredient ? (
+        <div className="cp-ai-asking-about-banner" id="inlineAskingAbout">
+          <div className="cp-ai-asking-about-banner__text">
+            <span className="cp-ai-asking-about-banner__eyebrow">Asking about</span>
+            <span className="cp-ai-asking-about-banner__ingredient">
+              {ingredientDisplayLine(selectedIngredient)}
+            </span>
+          </div>
+          {onClearSelectedIngredient ? (
+            <button
+              aria-label="Clear selected ingredient"
+              className="cp-ai-asking-about-banner__clear"
+              onClick={onClearSelectedIngredient}
+              type="button"
+            >
+              <X size={16} weight="bold" />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <form className="cp-ai-edit-form" onSubmit={submitPrompt}>
         <textarea
           aria-label="What should change?"
@@ -85,7 +118,9 @@ export function AIEditSection({
           placeholder={
             isOutOfEdits
               ? "Upgrade to keep editing with AI."
-              : "Make this dairy-free, or halve the garlic and add more lemon."
+              : selectedIngredient
+                ? "What should change about this ingredient?"
+                : "Make this dairy-free, or halve the garlic and add more lemon."
           }
           rows={3}
           value={editState.prompt}
@@ -104,9 +139,9 @@ export function AIEditSection({
         </button>
       </form>
 
-      {suggestions.length > 0 ? (
+      {displayedSuggestions.length > 0 ? (
         <div className="cp-ai-edit-suggestions" aria-label="AI edit suggestions">
-          {suggestions.map((suggestion) => (
+          {displayedSuggestions.map((suggestion) => (
             <button
               className="cp-ai-edit-suggestion"
               disabled={isDisabled}
