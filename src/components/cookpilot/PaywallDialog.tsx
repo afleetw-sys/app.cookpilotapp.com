@@ -3,6 +3,7 @@
 import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { PackageType } from "@revenuecat/purchases-js";
 import type { Package } from "@revenuecat/purchases-js";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useSubscription } from "@/components/providers/SubscriptionProvider";
@@ -83,7 +84,7 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
   }
 
   const priceLabel = rcPackage?.webBillingProduct?.currentPrice
-    ? `${rcPackage.webBillingProduct.currentPrice.formattedPrice} / ${rcPackage.packageType === "ANNUAL" ? "year" : "month"}`
+    ? `${rcPackage.webBillingProduct.currentPrice.formattedPrice} / ${rcPackage.packageType === PackageType.Annual ? "year" : "month"}`
     : null;
 
   return createPortal(
