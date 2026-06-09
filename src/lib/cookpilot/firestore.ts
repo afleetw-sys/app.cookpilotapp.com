@@ -400,10 +400,21 @@ export async function updateRecipeDetailPreferences(params: {
 }
 
 export async function deleteRecipe(userId: string, recipeId: string): Promise<void> {
-  const batch = writeBatch(db);
-  batch.delete(recipeRef(userId, recipeId));
-  batch.delete(recipeDetailRef(userId, recipeId));
-  await batch.commit();
+  const versionsSnapshot = await getDocs(recipeVersionsCollection(userId, recipeId));
+
+  const refsToDelete = [
+    ...versionsSnapshot.docs.map((d) => d.ref),
+    recipeDetailRef(userId, recipeId),
+    recipeRef(userId, recipeId),
+  ];
+
+  for (let index = 0; index < refsToDelete.length; index += 400) {
+    const batch = writeBatch(db);
+    for (const ref of refsToDelete.slice(index, index + 400)) {
+      batch.delete(ref);
+    }
+    await batch.commit();
+  }
 }
 
 export async function deleteAllUserData(userId: string): Promise<void> {

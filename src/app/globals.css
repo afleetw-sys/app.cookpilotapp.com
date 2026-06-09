@@ -117,6 +117,46 @@ body {
     color 160ms ease;
 }
 
+html:has(.cp-detail--page) body {
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in srgb, var(--recipe-page-accent) var(--recipe-page-glow-mix), transparent),
+      color-mix(in srgb, var(--recipe-page-accent) var(--recipe-page-glow-soft-mix), transparent) 44%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse at 85% 90%,
+      color-mix(in srgb, var(--recipe-page-accent) 6%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--recipe-page-accent) var(--recipe-page-base-mix), transparent),
+      color-mix(in srgb, var(--recipe-page-accent) var(--recipe-page-base-mix), transparent)
+    ),
+    var(--recipe-page-bg);
+}
+
+html[data-theme="dark"]:has(.cp-detail--page) body {
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in srgb, var(--recipe-page-accent-dark) var(--recipe-page-glow-mix-dark), transparent),
+      color-mix(in srgb, var(--recipe-page-accent-dark) var(--recipe-page-glow-soft-mix-dark), transparent) 44%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse at 85% 90%,
+      color-mix(in srgb, var(--recipe-page-accent-dark) 6%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(
+      color-mix(in srgb, var(--recipe-page-accent-dark) var(--recipe-page-base-mix-dark), transparent),
+      color-mix(in srgb, var(--recipe-page-accent-dark) var(--recipe-page-base-mix-dark), transparent)
+    ),
+    var(--recipe-page-bg-dark);
+}
+
 button,
 input,
 textarea {
@@ -177,10 +217,11 @@ ol {
   gap: var(--cp-space-5);
   min-height: 62px;
   padding: 0 var(--cp-space-6);
-  background: color-mix(in srgb, var(--cp-card) 86%, transparent);
-  border-bottom: 1px solid var(--cp-line);
-  box-shadow: none;
-  backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--cp-card) 30%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--cp-line) 40%, transparent);
+  box-shadow: 0 1px 0 color-mix(in srgb, white 6%, transparent), 0 4px 24px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(64px) saturate(1.6) brightness(0.88);
+  -webkit-backdrop-filter: blur(64px) saturate(1.6) brightness(0.88);
 }
 
 .cp-topbar__brand {
@@ -1578,7 +1619,7 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   display: flex;
   flex-direction: column;
   gap: var(--cp-space-6);
-  padding: var(--cp-space-7);
+  padding: 0 var(--cp-space-7) var(--cp-space-7);
 }
 
 .cp-detail--page {
@@ -1616,6 +1657,7 @@ html[data-theme="dark"] .cp-recipe-card__tape {
 .cp-app-shell:has(.cp-detail--page) .cp-app-shell__topbar {
   margin-bottom: 0;
 }
+
 
 .cp-app-shell:has(.cp-detail--page) .cp-shell {
   padding: 0;
@@ -1661,6 +1703,7 @@ html[data-theme="dark"] .cp-detail--page {
   align-items: center;
   justify-content: space-between;
   gap: var(--cp-space-3);
+  padding-top: var(--cp-space-5);
 }
 
 .cp-detail__topbar-actions {
@@ -1760,11 +1803,11 @@ html[data-theme="dark"] .cp-detail__tape-chip {
   gap: 9px;
   min-height: 44px;
   padding: 0 16px;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--recipe-current-chip-accent, #d7e28f) 20%, transparent);
   border-radius: 20px;
-  background: var(--recipe-current-input-fill, var(--cp-card));
-  box-shadow: none;
-  color: var(--recipe-current-chip-accent-on-bg, var(--cp-ink));
+  background: rgb(255, 250, 224);
+  box-shadow: 0 3px 5px color-mix(in srgb, var(--cp-ink) 10%, transparent);
+  color: var(--cp-ink);
   font-size: 0.88rem;
   font-weight: 600;
   letter-spacing: 0;
@@ -1774,8 +1817,9 @@ html[data-theme="dark"] .cp-detail__tape-chip {
 
 html[data-theme="dark"] .cp-detail__tag {
   background: var(--recipe-current-input-fill, var(--cp-card));
-  color: var(--recipe-current-chip-accent-on-bg, #fffaf0);
-  box-shadow: none;
+  border-color: color-mix(in srgb, var(--recipe-current-chip-accent, #9fe34e) 20%, transparent);
+  color: var(--cp-ink);
+  box-shadow: 0 3px 5px color-mix(in srgb, var(--cp-ink) 18%, transparent);
 }
 
 .cp-detail__tag::before {
@@ -1787,7 +1831,7 @@ html[data-theme="dark"] .cp-detail__tag {
   width: 34px;
   height: 15px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--recipe-current-chip-accent, #d7e28f) 30%, transparent);
+  background: color-mix(in srgb, var(--recipe-current-chip-accent, #d7e28f) 36%, transparent);
   opacity: 1;
   transform: translateX(-50%) rotate(2deg);
 }
@@ -1797,12 +1841,12 @@ html[data-theme="dark"] .cp-detail__tag::before {
 }
 
 .cp-detail__tag svg {
-  color: var(--recipe-current-chip-accent-on-bg, var(--recipe-current-chip-accent, #9fe34e));
+  color: var(--recipe-current-chip-accent, #d7e28f);
   flex: 0 0 auto;
 }
 
 html[data-theme="dark"] .cp-detail__tag svg {
-  color: var(--recipe-current-chip-accent-on-bg, var(--recipe-current-chip-accent, #9fe34e));
+  color: var(--recipe-current-chip-accent, #9fe34e);
 }
 
 .cp-detail__tag:nth-child(even) {

@@ -703,6 +703,26 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     return seed ? buildRecipePalette(seed) : null;
   }, [selectedRecipe?.themeSeedColors]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const vars: [string, string][] = recipePalette ? [
+      ["--recipe-page-accent", recipePalette.primaryAccent],
+      ["--recipe-page-accent-dark", recipePalette.primaryAccentDark],
+      ["--recipe-page-bg", recipePalette.background],
+      ["--recipe-page-bg-dark", recipePalette.backgroundDark],
+      ["--recipe-page-base-mix", recipePalette.primaryBaseMix],
+      ["--recipe-page-base-mix-dark", recipePalette.primaryBaseMixDark],
+      ["--recipe-page-glow-mix", recipePalette.primaryTopGlowMix],
+      ["--recipe-page-glow-mix-dark", recipePalette.primaryTopGlowMixDark],
+      ["--recipe-page-glow-soft-mix", recipePalette.primaryTopGlowSoftMix],
+      ["--recipe-page-glow-soft-mix-dark", recipePalette.primaryTopGlowSoftMixDark],
+    ] : [];
+    for (const [key, val] of vars) root.style.setProperty(key, val);
+    return () => {
+      for (const [key] of vars) root.style.removeProperty(key);
+    };
+  }, [recipePalette]);
+
   async function handleEditRecipe(promptOverride?: string) {
     const prompt = (promptOverride ?? editState.prompt).trim();
     if (!user || !selectedRecipe || !prompt) return;
