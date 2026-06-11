@@ -2,7 +2,7 @@
  * Normalizes user-pasted import URLs (matches iOS RecipeParserService).
  */
 export function normalizeImportURL(raw: string): string {
-  const trimmed = raw.trim();
+  const trimmed = raw.trim().replace(/\s+/g, "");
   if (!trimmed) return trimmed;
 
   const lower = trimmed.toLowerCase();

@@ -5,6 +5,7 @@ import {
   PARSER_SOURCE,
 } from "@/lib/cookpilot/parserSources";
 import { detectSocialPlatform } from "@/lib/cookpilot/socialPlatform";
+import { extractSocialMetadataInBrowser } from "@/lib/cookpilot/socialClientExtraction";
 import {
   ingredientCount,
   instructionCount,
@@ -30,7 +31,8 @@ function recipeTraceStats(recipe: RecipeData) {
 
 /**
  * Web import entry point — identical contract to iOS `RecipeParserService.extractRecipeFromURL`
- * for all platforms the server supports: one `parseRecipeFromURL` call, no client-side parsing.
+ * for all platforms the server supports: one `parseRecipeFromURL` call with
+ * optional browser-visible social metadata.
  */
 export async function importRecipeFromURL(url: string): Promise<ImportRecipeFromURLResult> {
   const trimmedURL = normalizeImportURL(url);
@@ -44,16 +46,21 @@ export async function importRecipeFromURL(url: string): Promise<ImportRecipeFrom
   );
 
   try {
+    const extraction = await extractSocialMetadataInBrowser(trimmedURL, socialPlatform);
     const response = await parseRecipeFromURL(trimmedURL, {
       importSessionID: trace.importSessionID,
+      ...(extraction ? { extraction } : {}),
     });
     const finalParserSource = response.parser?.source ?? "parseRecipeFromURL";
 
     if (socialPlatform) {
       trace.logExtraction({
-        extractionSource: "server-open-graph",
+        extractionSource: extraction ? "client-oembed" : "server-open-graph",
         captionFound: Boolean(
-          response.recipe.description?.trim() ||
+          extraction?.caption?.trim() ||
+            extraction?.description?.trim() ||
+            extraction?.title?.trim() ||
+            response.recipe.description?.trim() ||
             response.recipe.title?.trim(),
         ),
         transcriptFound: false,

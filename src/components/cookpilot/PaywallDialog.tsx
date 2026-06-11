@@ -8,7 +8,13 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useSubscription } from "@/components/providers/SubscriptionProvider";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/cookpilot/ModalShell";
-import { configureRevenueCat, ENTITLEMENT_ID } from "@/lib/revenuecat/client";
+import {
+  configureRevenueCat,
+  ENTITLEMENT_ID,
+  hasWebPurchaseMarker,
+  OFFERINGS_PREVIEW_APP_USER_ID,
+  rememberWebPurchase,
+} from "@/lib/revenuecat/client";
 
 const BENEFITS = [
   {
@@ -40,12 +46,18 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Fetch the current offering from RevenueCat
+  // Fetch the current offering from RevenueCat. Anonymous visitors who have
+  // never purchased browse offerings under a shared preview ID so that merely
+  // opening the paywall doesn't register their throwaway UID as a customer.
   useEffect(() => {
     if (!user) return;
+    const offeringsAppUserId =
+      user.isAnonymous && !hasWebPurchaseMarker(user.uid)
+        ? OFFERINGS_PREVIEW_APP_USER_ID
+        : user.uid;
     void (async () => {
       try {
-        const purchases = configureRevenueCat(user.uid);
+        const purchases = configureRevenueCat(offeringsAppUserId);
         const offerings = await purchases.getOfferings();
         const pkg = offerings.current?.availablePackages[0] ?? null;
         setRcPackage(pkg);
@@ -62,8 +74,19 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
     setPurchasing(true);
     setPurchaseError(null);
     try {
+      // The displayed package may have been fetched under the shared preview
+      // ID; re-configure with the real UID and re-resolve the package from
+      // that instance so the purchase is attributed to this user.
       const purchases = configureRevenueCat(user.uid);
-      const { customerInfo } = await purchases.purchase({ rcPackage });
+      const offerings = await purchases.getOfferings();
+      const purchasablePackage =
+        offerings.current?.availablePackages.find(
+          (candidate) => candidate.identifier === rcPackage.identifier
+        ) ?? rcPackage;
+      const { customerInfo } = await purchases.purchase({ rcPackage: purchasablePackage });
+      // Mark this UID as a purchaser so future sessions fetch real
+      // subscription status even while the user is anonymous.
+      rememberWebPurchase(user.uid);
       if (customerInfo.entitlements.active[ENTITLEMENT_ID]) {
         await refreshSubscriptionStatus();
         onClose();

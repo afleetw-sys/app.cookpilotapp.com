@@ -4,6 +4,8 @@ import type { EditRecipeResponse, Ingredient, RecipeData, ShareLinkResult, Share
 import type { ClientRecipeExtraction } from "@/lib/cookpilot/clientExtraction";
 import type { SocialPlatform } from "@/lib/cookpilot/socialPlatform";
 
+type SocialParserPlatform = Exclude<SocialPlatform, "youtube"> | "other";
+
 export type ParseRecipeFromUrlResponse = {
   recipe: RecipeData;
   parser?: {
@@ -24,7 +26,7 @@ export type ParseSocialRecipeResponse = {
   recipe: RecipeData;
   parser?: {
     source: string;
-    platform?: SocialPlatform;
+    platform?: SocialParserPlatform;
     usedTranscriptFallback?: boolean;
     validation?: {
       stages: Array<{
@@ -37,7 +39,7 @@ export type ParseSocialRecipeResponse = {
 };
 
 export type ParseSocialRecipeRequest = {
-  platform: SocialPlatform;
+  platform: SocialParserPlatform;
   title?: string | null;
   caption?: string | null;
   description?: string | null;

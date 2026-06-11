@@ -1,4 +1,4 @@
-export type SocialPlatform = "instagram" | "tiktok" | "pinterest";
+export type SocialPlatform = "instagram" | "tiktok" | "pinterest" | "youtube";
 
 export function detectSocialPlatform(urlString: string): SocialPlatform | null {
   try {
@@ -8,6 +8,9 @@ export function detectSocialPlatform(urlString: string): SocialPlatform | null {
     }
     if (host.includes("tiktok.com")) {
       return "tiktok";
+    }
+    if (host.includes("youtube.com") || host === "youtu.be") {
+      return "youtube";
     }
     if (host.includes("pinterest.com") || host === "pin.it") {
       return "pinterest";

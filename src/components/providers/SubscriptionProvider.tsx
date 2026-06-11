@@ -10,7 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { configureRevenueCat, ENTITLEMENT_ID } from "@/lib/revenuecat/client";
+import {
+  configureRevenueCat,
+  ENTITLEMENT_ID,
+  hasWebPurchaseMarker,
+} from "@/lib/revenuecat/client";
 
 type SubscriptionContextValue = {
   isSubscribed: boolean;
@@ -53,6 +57,17 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     if (user.uid === lastConfiguredUidRef.current) return;
 
     lastConfiguredUidRef.current = user.uid;
+
+    // Contacting RevenueCat registers the UID as a customer, and anonymous
+    // visitors mint a fresh UID per browser session — so only fetch for
+    // anonymous users when this browser has evidence of a past purchase.
+    // Everyone else can't have an entitlement yet.
+    if (user.isAnonymous && !hasWebPurchaseMarker(user.uid)) {
+      setIsSubscribed(false);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     void fetchStatus(user.uid);
   }, [user, fetchStatus]);

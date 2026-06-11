@@ -33,6 +33,8 @@ export function ImportRecipePanel({
     setLoading(true);
     setError(null);
 
+    let fallbackDraftURL: string | null = null;
+
     try {
       const activeUser = user ?? await ensureAnonymousUser();
       const userId = activeUser.uid;
@@ -62,6 +64,7 @@ export function ImportRecipePanel({
         return;
       }
 
+      fallbackDraftURL = trimmedURL;
       const imported = await importRecipeFromURL(trimmedURL);
       const recipeId = crypto.randomUUID();
 
@@ -94,6 +97,20 @@ export function ImportRecipePanel({
       }
     } catch (nextError) {
       console.error(nextError);
+      if (fallbackDraftURL) {
+        const recipeId = crypto.randomUUID();
+        savePendingImportDraft(
+          recipeId,
+          { ingredientSections: [], instructionSections: [], servings: 1 },
+          fallbackDraftURL,
+        );
+        if (onComplete) {
+          onComplete(recipeId);
+        } else {
+          router.push(`/recipes/${recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1`);
+        }
+        return;
+      }
       setError("We couldn't import a recipe from that URL.");
       setLoading(false);
     }
