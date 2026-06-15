@@ -1080,11 +1080,9 @@ ol {
   box-shadow: 0 0 0 4px rgba(0, 155, 250, 0.08);
 }
 
-.cp-sort-select__label {
+.cp-sort-select__icon {
+  flex: 0 0 auto;
   color: var(--cp-ink-soft);
-  font-size: 0.78rem;
-  font-weight: 650;
-  white-space: nowrap;
 }
 
 .cp-sort-select__control select {

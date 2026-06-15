@@ -6,6 +6,7 @@ import {
   CaretRight,
   MagnifyingGlass,
   Plus,
+  SortAscending,
   X,
 } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
@@ -583,7 +584,7 @@ export function RecipesPage({
             <div className="cp-board__browse-actions">
               <label className="cp-sort-select">
                 <div className="cp-sort-select__control">
-                  <span className="cp-sort-select__label">Sort</span>
+                  <SortAscending className="cp-sort-select__icon" size={16} weight="bold" />
                   <select
                     aria-label="Sort recipes"
                     onChange={(event) => setSortOption(event.target.value as RecipeSortOption)}
