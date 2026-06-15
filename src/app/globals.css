@@ -2006,9 +2006,9 @@ html[data-theme="dark"] .cp-detail--page {
 }
 
 button.cp-detail__tape-chip {
+  appearance: none;
   border: 0;
   cursor: pointer;
-  font: inherit;
 }
 
 button.cp-detail__tape-chip:disabled {
