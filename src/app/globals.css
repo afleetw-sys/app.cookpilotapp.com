@@ -1423,7 +1423,7 @@ html[data-theme="dark"] .cp-filter-tag.is-active {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   min-height: 0;
   margin: 12px 0 20px;
@@ -1505,7 +1505,7 @@ a.cp-recipe-card {
 .cp-recipe-card__body {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
   padding: 2px 4px 0;
 }
 
@@ -1519,7 +1519,7 @@ a.cp-recipe-card {
 .cp-recipe-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   color: var(--cp-ink-soft);
   font-size: 0.82rem;
 }
@@ -1977,7 +1977,7 @@ html[data-theme="dark"] .cp-detail--page {
 .cp-detail__hero-copy {
   display: flex;
   flex-direction: column;
-  gap: var(--cp-space-4);
+  gap: calc(var(--cp-space-4) + 2px);
   width: 100%;
   max-width: 620px;
 }
@@ -2009,8 +2009,8 @@ html[data-theme="dark"] .cp-detail--page {
 .cp-detail__tape-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 10px;
+  gap: 12px;
+  padding-top: 12px;
   width: 100%;
 }
 
@@ -2055,8 +2055,8 @@ html[data-theme="dark"] .cp-detail__tape-chip {
 .cp-detail__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 2px;
+  gap: 12px;
+  padding-top: 4px;
 }
 
 .cp-detail__tag {
