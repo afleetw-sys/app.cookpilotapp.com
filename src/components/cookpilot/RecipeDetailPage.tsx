@@ -1,11 +1,10 @@
 "use client";
-
-import Image from "next/image";
 import {
   ArrowClockwise,
   ArrowLeft,
   ArrowUpRight,
   Check,
+  DotsSixVertical,
   Fire,
   FloppyDisk,
   PencilSimple,
@@ -16,11 +15,29 @@ import {
   Trash,
   X,
 } from "@phosphor-icons/react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useSubscription } from "@/components/providers/SubscriptionProvider";
+import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { PaywallDialog } from "@/components/cookpilot/PaywallDialog";
 import {
   loadUsageInfo,
@@ -67,7 +84,9 @@ import {
 } from "@/lib/cookpilot/imageStorage";
 import { clearPendingImportDraft, loadPendingImportDraft } from "@/lib/cookpilot/importDraft";
 import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
+import { proxiedExternalCoverUrl } from "@/lib/cookpilot/resolveRecipeCoverUrl";
 import { useResolvedRecipeCoverSrc } from "@/lib/cookpilot/useResolvedRecipeCoverSrc";
+import { queueRecipeDeletedToast } from "@/lib/cookpilot/recipeDeletedToast";
 import { editRecipe, createShareLink, deleteShareLink } from "@/lib/cookpilot/functions";
 import { buildShareLinkPayload } from "@/lib/cookpilot/sharedRecipe";
 import { defaultAIEditSuggestions } from "@/lib/cookpilot/editSuggestions";
@@ -75,7 +94,7 @@ import { knownTagsFromRecipes } from "@/lib/cookpilot/recipeBrowse";
 import { getRecipesBrowseSessionCache, removeRecipeFromBrowseSessionCache, syncSavedRecipeToBrowseSessionCache, updateRecipeSummaryInBrowseSessionCache, upsertSavedRecipeInBrowseSessionCache } from "@/lib/cookpilot/recipesBrowseSessionCache";
 import { scaleRecipe } from "@/lib/cookpilot/scaling";
 import { buildRecipePalette } from "@/lib/cookpilot/theme";
-import type { EditRecipeResponse, Ingredient, RecipeData, SavedRecipe } from "@/lib/cookpilot/types";
+import type { EditRecipeResponse, Ingredient, Instruction, RecipeData, SavedRecipe } from "@/lib/cookpilot/types";
 import { auth } from "@/lib/firebase/client";
 import { db } from "@/lib/firebase/db";
 
@@ -365,10 +384,107 @@ function RecipeTagChip({
   );
 }
 
+function SortableInstructionRow({
+  instruction,
+  onChangeText,
+  onDelete,
+}: {
+  instruction: Instruction;
+  onChangeText: (text: string) => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: instruction.id,
+  });
+  const rowStyle: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : undefined,
+  };
+  const handleStyle: CSSProperties = {
+    cursor: "grab",
+    background: "none",
+    border: "none",
+    padding: 0,
+    width: 40,
+    height: 40,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "var(--cp-ink-soft, #9aa0a6)",
+    touchAction: "none",
+  };
+
+  return (
+    <li ref={setNodeRef} style={rowStyle}>
+      <span className="cp-instruction-list__step">{instruction.stepNumber}</span>
+      <div className="cp-edit-row cp-edit-row--instruction">
+        <textarea
+          aria-label={`Step ${instruction.stepNumber}`}
+          className="cp-edit-row__input cp-edit-row__textarea"
+          onChange={(event) => onChangeText(event.target.value)}
+          onDragStart={(event) => event.preventDefault()}
+          placeholder="Describe this step"
+          rows={3}
+          value={instruction.text}
+        />
+        <button
+          aria-label={`Reorder step ${instruction.stepNumber}`}
+          className="cp-edit-row__drag-handle"
+          style={handleStyle}
+          type="button"
+          {...attributes}
+          {...listeners}
+        >
+          <DotsSixVertical size={16} />
+        </button>
+        <button
+          aria-label={`Delete step ${instruction.stepNumber}`}
+          className="cp-edit-row__delete"
+          onClick={onDelete}
+          type="button"
+        >
+          <Trash size={16} />
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function themeExtractionImageUrl(
+  storedImageUrl: string | null | undefined,
+  resolvedImageUrl: string | null,
+): string | null {
+  const stored = storedImageUrl?.trim();
+  const resolved = resolvedImageUrl?.trim();
+
+  if (stored && isFirebaseStorageURL(stored)) {
+    return resolved?.startsWith("http") ? resolved : stored;
+  }
+
+  if (stored?.startsWith("http")) {
+    return proxiedExternalCoverUrl(stored);
+  }
+
+  if (resolved?.startsWith("http")) {
+    return isFirebaseStorageURL(resolved) ? resolved : proxiedExternalCoverUrl(resolved);
+  }
+
+  if (resolved?.startsWith("/api/recipe-cover")) {
+    return resolved;
+  }
+
+  return null;
+}
+
 export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: string; isDraft?: boolean }) {
   const router = useRouter();
   const { user, status } = useAuth();
   const { isSubscribed, refreshSubscriptionStatus } = useSubscription();
+  const instructionDragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const [selectedRecipe, setSelectedRecipe] = useState<SavedRecipe | null>(null);
   const [loadingRecipeDetail, setLoadingRecipeDetail] = useState(true);
   const [showDetailSpinner, setShowDetailSpinner] = useState(false);
@@ -412,6 +528,10 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
   const tagInputRef = useRef<HTMLDivElement>(null);
+  const heroTitleRef = useRef<HTMLHeadingElement>(null);
+  const detailTopbarSentinelRef = useRef<HTMLDivElement>(null);
+  const [showStickyRecipeTitle, setShowStickyRecipeTitle] = useState(false);
+  const [isDetailTopbarStuck, setIsDetailTopbarStuck] = useState(false);
 
   // Subscribe to real-time usage updates — fires whenever any platform writes a new count.
   // Falls back to a one-shot load for anonymous users (no Firestore listener needed).
@@ -434,6 +554,38 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     );
     return () => clearTimeout(t);
   }, [loadingRecipeDetail]);
+
+  useEffect(() => {
+    if (isEditingRecipe) return;
+
+    const heroTitle = heroTitleRef.current;
+    if (!heroTitle) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowStickyRecipeTitle(!entry.isIntersecting);
+      },
+      { rootMargin: "-72px 0px 0px 0px", threshold: 0 },
+    );
+
+    observer.observe(heroTitle);
+    return () => observer.disconnect();
+  }, [isEditingRecipe, selectedRecipe?.id]);
+
+  useEffect(() => {
+    const sentinel = detailTopbarSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsDetailTopbarStuck(!entry.isIntersecting);
+      },
+      { threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [selectedRecipe?.id]);
 
   useEffect(() => {
     if (status !== "signedOut") return;
@@ -515,7 +667,12 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       router.replace("/recipes");
       return;
     }
-    const pending = buildSavedRecipe({ id: recipeId, recipe: draft.recipe, sourceURL: draft.sourceURL });
+    const pending = buildSavedRecipe({
+      id: recipeId,
+      recipe: draft.recipe,
+      sourceURL: draft.sourceURL,
+      themeSeedColors: draft.themeSeedColors,
+    });
     setSelectedRecipe(pending);
     setEditDraft(normalizedEditableDraft(pending));
     setIsEditingRecipe(true);
@@ -577,9 +734,8 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     if (!user || !selectedRecipe) return;
     if (isEditingRecipe || uploadingImage || localImagePreview) return;
     if (selectedRecipe.themeSeedColors) return;
-    const imageUrl = resolvedDetailImageSrc ?? selectedRecipe.recipe.imageURL;
+    const imageUrl = themeExtractionImageUrl(selectedRecipe.recipe.imageURL, resolvedDetailImageSrc);
     if (!imageUrl) return;
-    if (!imageUrl.startsWith("http") || !imageUrl.includes("firebasestorage.googleapis.com")) return;
 
     const userId = user.uid;
     let cancelled = false;
@@ -596,6 +752,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   }, [user, selectedRecipe, recipeId, isEditingRecipe, uploadingImage, localImagePreview, resolvedDetailImageSrc]);
 
   async function handleDeleteRecipe() {
+    if (deletingRecipe) return;
     if (!user || !selectedRecipe) return;
     setDeletingRecipe(true);
     setDeleteError(null);
@@ -608,13 +765,18 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       }
       await deleteRecipe(user.uid, selectedRecipe.id);
       removeRecipeFromBrowseSessionCache(user.uid, selectedRecipe.id);
-      router.push("/recipes");
+      queueRecipeDeletedToast();
+      router.replace("/recipes");
     } catch (error) {
       console.error(error);
       setDeletingRecipe(false);
-      setShowDeleteConfirm(false);
       setDeleteError("We couldn't delete that recipe. Please try again.");
     }
+  }
+
+  function handleDismissDeleteConfirm() {
+    if (deletingRecipe) return;
+    setShowDeleteConfirm(false);
   }
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -1105,6 +1267,42 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     );
   }
 
+  function moveDraftInstruction(activeId: string, overId: string) {
+    if (activeId === overId) return;
+    updateDraftRecipe((recipe) => {
+      // Flatten across sections (remembering each step's section) so arrayMove can apply the
+      // same up/down semantics dnd-kit uses; inserting "before over" snaps downward drags back.
+      const sectionOrder = recipe.instructionSections.map((section) => ({
+        id: section.id,
+        title: section.title ?? null,
+      }));
+      const flat = recipe.instructionSections.flatMap((section) =>
+        section.instructions.map((instruction) => ({ instruction, sectionId: section.id })),
+      );
+      const oldIndex = flat.findIndex((entry) => entry.instruction.id === activeId);
+      const overIndex = flat.findIndex((entry) => entry.instruction.id === overId);
+      if (oldIndex === -1 || overIndex === -1) return recipe;
+
+      // The dragged step joins the section it was dropped into (cross-section support).
+      const overSectionId = flat[overIndex].sectionId;
+      const reordered = arrayMove(flat, oldIndex, overIndex).map((entry) =>
+        entry.instruction.id === activeId ? { ...entry, sectionId: overSectionId } : entry,
+      );
+
+      const instructionSections = sectionOrder
+        .map(({ id, title }) => ({
+          id,
+          title,
+          instructions: reordered
+            .filter((entry) => entry.sectionId === id)
+            .map((entry) => entry.instruction),
+        }))
+        .filter((section) => section.instructions.length > 0);
+
+      return renumberInstructions({ ...recipe, instructionSections });
+    });
+  }
+
   async function handleShareRecipe() {
     if (!selectedRecipe) return;
 
@@ -1152,6 +1350,14 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     ) : null;
   }
 
+  if (deletingRecipe) {
+    return (
+      <div className="cp-page cp-page--centered">
+        <LoadingSpinner label="Deleting recipe" />
+      </div>
+    );
+  }
+
   if (!selectedRecipe || !scaledRecipe) {
     return (
       <div className="cp-page cp-page--centered">
@@ -1167,7 +1373,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const hasDetailImage = Boolean(resolvedDetailImageSrc) && !detailImageFailed;
   const displayedRecipe = isEditingRecipe && editDraft ? editDraft.recipe : scaledRecipe;
   const baseRecipe = isEditingRecipe && editDraft ? editDraft.recipe : selectedRecipe.recipe;
-  const aiEditSuggestions = defaultAIEditSuggestions(baseRecipe);
+  const aiEditSuggestions = defaultAIEditSuggestions(baseRecipe, {
+    sourceURL: selectedRecipe.sourceURL,
+  });
   const baseServings = baseRecipe.servings ?? 1;
   const currentServings = isEditingRecipe ? baseServings : servingsOverride ?? baseServings;
   const allScaledIngredients =
@@ -1220,7 +1428,8 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         "--recipe-primary-top-glow-soft-mix-dark": recipePalette.primaryTopGlowSoftMixDark,
       } as React.CSSProperties) : undefined}
     >
-      <div className="cp-detail__topbar">
+      <div aria-hidden="true" className="cp-detail__topbar-sentinel" ref={detailTopbarSentinelRef} />
+      <div className={`cp-detail__topbar ${isDetailTopbarStuck ? "is-stuck" : ""}`.trim()}>
         <Button
           aria-label="Back to recipes"
           onClick={() => router.push("/recipes")}
@@ -1229,6 +1438,14 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         >
           <ArrowLeft size={18} />
         </Button>
+        <div
+          aria-hidden={!showStickyRecipeTitle || isEditingRecipe}
+          className={`cp-detail__topbar-title ${
+            showStickyRecipeTitle && !isEditingRecipe ? "is-visible" : ""
+          }`.trim()}
+        >
+          {selectedRecipe.recipe.title || "Untitled recipe"}
+        </div>
         <div className="cp-detail__topbar-actions">
           {isEditingRecipe ? (
             <>
@@ -1387,7 +1604,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             </div>
           ) : (
             <>
-              <h2>{selectedRecipe.recipe.title || "Untitled recipe"}</h2>
+              <h2 ref={heroTitleRef}>{selectedRecipe.recipe.title || "Untitled recipe"}</h2>
 
               {selectedRecipe.sourceURL && selectedRecipe.sourceURL !== "photo_upload" ? (
             <a
@@ -1455,6 +1672,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                   return (
                     <div className="cp-image-picker__preview">
                       {/* Native img: Next/Image fill can hang loading Firebase URLs in edit mode */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         alt={editDraft.recipe.title || "Recipe image"}
                         className="cp-image-picker__img"
@@ -1530,13 +1748,13 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           </div>
         ) : hasDetailImage ? (
           <div className="cp-detail__hero-image">
-            <Image
+            {/* Native img keeps the original Firebase/external asset quality. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               alt={selectedRecipe.recipe.title || "Recipe image"}
               className="cp-detail__image"
-              height={300}
               onError={() => void handleDetailImageError()}
               src={resolvedDetailImageSrc!}
-              width={300}
             />
             {/* Tags overlaid on the image — only shown on mobile via CSS */}
             {recipeTags.length > 0 ? (
@@ -1737,42 +1955,55 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         ) : null}
 
         <DetailSection bare={isEditingRecipe} title="Instructions">
-          {displayedRecipe.instructionSections.map((section) => (
-            <div className="cp-detail__section-block" key={section.id}>
-              {section.title ? <h4 className="cp-detail__section-title">{section.title}</h4> : null}
-              <ol className="cp-instruction-list">
-                {section.instructions.map((instruction) => (
-                  <li key={instruction.id}>
-                    <span className="cp-instruction-list__step">{instruction.stepNumber}</span>
-                    {isEditingRecipe ? (
-                      <div className="cp-edit-row cp-edit-row--instruction">
-                        <textarea
-                          aria-label={`Step ${instruction.stepNumber}`}
-                          className="cp-edit-row__input cp-edit-row__textarea"
-                          onChange={(event) =>
-                            updateDraftInstruction(section.id, instruction.id, event.target.value)
-                          }
-                          placeholder="Describe this step"
-                          rows={3}
-                          value={instruction.text}
+          {isEditingRecipe ? (
+            <DndContext
+              sensors={instructionDragSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (over && active.id !== over.id) {
+                  moveDraftInstruction(String(active.id), String(over.id));
+                }
+              }}
+            >
+              <SortableContext
+                items={displayedRecipe.instructionSections.flatMap((section) =>
+                  section.instructions.map((instruction) => instruction.id),
+                )}
+                strategy={verticalListSortingStrategy}
+              >
+                {displayedRecipe.instructionSections.map((section) => (
+                  <div className="cp-detail__section-block" key={section.id}>
+                    {section.title ? <h4 className="cp-detail__section-title">{section.title}</h4> : null}
+                    <ol className="cp-instruction-list">
+                      {section.instructions.map((instruction) => (
+                        <SortableInstructionRow
+                          key={instruction.id}
+                          instruction={instruction}
+                          onChangeText={(text) => updateDraftInstruction(section.id, instruction.id, text)}
+                          onDelete={() => removeDraftInstruction(section.id, instruction.id)}
                         />
-                        <button
-                          aria-label={`Delete step ${instruction.stepNumber}`}
-                          className="cp-edit-row__delete"
-                          onClick={() => removeDraftInstruction(section.id, instruction.id)}
-                          type="button"
-                        >
-                          <Trash size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      <p>{instruction.text}</p>
-                    )}
-                  </li>
+                      ))}
+                    </ol>
+                  </div>
                 ))}
-              </ol>
-            </div>
-          ))}
+              </SortableContext>
+            </DndContext>
+          ) : (
+            displayedRecipe.instructionSections.map((section) => (
+              <div className="cp-detail__section-block" key={section.id}>
+                {section.title ? <h4 className="cp-detail__section-title">{section.title}</h4> : null}
+                <ol className="cp-instruction-list">
+                  {section.instructions.map((instruction) => (
+                    <li key={instruction.id}>
+                      <span className="cp-instruction-list__step">{instruction.stepNumber}</span>
+                      <p>{instruction.text}</p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))
+          )}
           {isEditingRecipe ? (
             <Button onClick={addDraftInstruction} size="compact" variant="secondary">
               <Plus size={15} />
@@ -1800,43 +2031,66 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       {isEditingRecipe && !isPendingDraft ? (
         <section className="cp-detail__section-card cp-detail__section-card--danger">
           {deleteError ? <StateBlock message={deleteError} title="Delete issue" tone="error" /> : null}
-          {showDeleteConfirm ? (
-            <div className="cp-delete-confirm">
-              <p className="cp-delete-confirm__message">
-                This will permanently delete this recipe. There&rsquo;s no undo.
-              </p>
-              <div className="cp-delete-confirm__actions">
-                <Button
-                  disabled={deletingRecipe}
-                  onClick={() => setShowDeleteConfirm(false)}
-                  size="compact"
-                  variant="secondary"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="cp-button--danger"
-                  disabled={deletingRecipe}
-                  onClick={() => void handleDeleteRecipe()}
-                  size="compact"
-                >
-                  {deletingRecipe ? <ArrowClockwise className="cp-spin" size={16} /> : <Trash size={16} />}
-                  Delete recipe
-                </Button>
+          <Button
+            className="cp-button--danger cp-button--danger-flat"
+            onClick={() => {
+              setDeleteError(null);
+              setShowDeleteConfirm(true);
+            }}
+            size="compact"
+            variant="secondary"
+          >
+            <Trash size={16} />
+            Delete recipe
+          </Button>
+        </section>
+      ) : null}
+
+      {showDeleteConfirm ? (
+        <ModalShell
+          aria-labelledby="delete-recipe-confirm-title"
+          onClose={handleDismissDeleteConfirm}
+          variant="confirm"
+        >
+          <form
+            className="cp-delete-confirm"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleDeleteRecipe();
+            }}
+          >
+            <div className="cp-delete-confirm__header">
+              <div className="cp-delete-confirm__icon" aria-hidden="true">
+                <Trash size={18} weight="bold" />
+              </div>
+              <div>
+                <h2 id="delete-recipe-confirm-title">Delete recipe?</h2>
+                <p>This will permanently delete this recipe. There&rsquo;s no undo.</p>
               </div>
             </div>
-          ) : (
-            <Button
-              className="cp-button--danger"
-              onClick={() => setShowDeleteConfirm(true)}
-              size="compact"
-              variant="secondary"
-            >
-              <Trash size={16} />
-              Delete recipe
-            </Button>
-          )}
-        </section>
+            {deleteError ? <StateBlock message={deleteError} title="Delete issue" tone="error" /> : null}
+            <div className="cp-delete-confirm__actions">
+              <Button
+                data-autofocus="true"
+                disabled={deletingRecipe}
+                onClick={handleDismissDeleteConfirm}
+                size="compact"
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="cp-button--danger"
+                disabled={deletingRecipe}
+                size="compact"
+                type="submit"
+              >
+                {deletingRecipe ? <ArrowClockwise className="cp-spin" size={16} /> : <Trash size={16} />}
+                Delete recipe
+              </Button>
+            </div>
+          </form>
+        </ModalShell>
       ) : null}
 
       {showPaywall ? (

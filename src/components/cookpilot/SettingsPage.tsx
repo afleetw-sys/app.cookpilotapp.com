@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 
 export function SettingsPanel({
   onClose,
+  titleId,
 }: {
   onClose?: () => void;
+  titleId?: string;
 }) {
   const { appearanceMode, setAppearanceMode } = useAppearance();
   const [settingsStatus, setSettingsStatus] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function SettingsPanel({
   return (
     <section className="cp-settings-card cp-page-card">
       <div className="cp-settings-card__header">
-        <h2>Settings</h2>
+        <h2 id={titleId}>Settings</h2>
         {onClose ? (
           <Button
             aria-label="Close settings"

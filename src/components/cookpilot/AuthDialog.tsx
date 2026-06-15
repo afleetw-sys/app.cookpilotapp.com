@@ -30,6 +30,18 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
     }
   }, [onClose, status]);
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   function resetPasswordStep() {
     setAuthStep("emailEntry");
     setAuthPassword("");

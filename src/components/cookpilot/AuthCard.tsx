@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ArrowClockwise, ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { StateBlock } from "@/components/ui/StateBlock";
 import { TextField } from "@/components/ui/TextField";
@@ -99,6 +99,18 @@ export function AuthCard({
     }
   }
 
+  function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void handleContinueWithEmail();
+  }
+
+  function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isWorking) {
+      void onSubmitPassword();
+    }
+  }
+
   const emailBusy = isWorking || isEmailSubmitting;
 
   return (
@@ -112,9 +124,10 @@ export function AuthCard({
         <p>Sign in to save, edit, and revisit your recipes.</p>
       </div>
       {authStep === "emailEntry" ? (
-        <div className="cp-auth-card__flow">
+        <form className="cp-auth-card__flow" onSubmit={handleEmailSubmit}>
           <TextField
             autoComplete="email"
+            autoFocus
             label="Email"
             onChange={(event) => onEmailChange(event.target.value)}
             placeholder="email@email.com"
@@ -122,7 +135,7 @@ export function AuthCard({
             value={authEmail}
           />
           {authError ? <StateBlock message={authError} title="Sign-in issue" tone="error" /> : null}
-          <Button disabled={emailBusy} onClick={() => void handleContinueWithEmail()}>
+          <Button disabled={emailBusy} type="submit">
             {isEmailSubmitting
               ? <ArrowClockwise className="cp-spin" size={18} />
               : <EnvelopeSimple size={18} />}
@@ -141,9 +154,9 @@ export function AuthCard({
             <AppleAuthLogo />
             Continue with Apple
           </Button>
-        </div>
+        </form>
       ) : (
-        <div className="cp-auth-card__flow">
+        <form className="cp-auth-card__flow" onSubmit={handlePasswordSubmit}>
           <button className="cp-auth-card__back" onClick={onBack} type="button">
             <ArrowLeft size={16} />
             <span>{authEmail}</span>
@@ -151,6 +164,7 @@ export function AuthCard({
           {authMode === "signUp" ? (
             <TextField
               autoComplete="name"
+              autoFocus
               label="Full Name"
               onChange={(event) => onFullNameChange(event.target.value)}
               placeholder="Jane Smith"
@@ -159,6 +173,7 @@ export function AuthCard({
           ) : null}
           <TextField
             autoComplete={authMode === "signUp" ? "new-password" : "current-password"}
+            autoFocus={authMode === "signIn"}
             label="Password"
             onChange={(event) => onPasswordChange(event.target.value)}
             placeholder={
@@ -170,11 +185,11 @@ export function AuthCard({
             value={authPassword}
           />
           {authError ? <StateBlock message={authError} title="Sign-in issue" tone="error" /> : null}
-          <Button disabled={isWorking} onClick={() => void onSubmitPassword()}>
+          <Button disabled={isWorking} type="submit">
             {isWorking ? <ArrowClockwise className="cp-spin" size={18} /> : null}
             {authMode === "signUp" ? "Create account" : "Sign in"}
           </Button>
-        </div>
+        </form>
       )}
       <p className="cp-auth-card__legal">
         By continuing, you agree to CookPilot&apos;s{" "}
