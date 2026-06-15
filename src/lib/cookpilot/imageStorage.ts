@@ -95,7 +95,8 @@ export async function migrateExternalImageToFirebaseStorage(
 }
 
 export function isFirebaseStorageURL(url: string): boolean {
-  return url.includes("firebasestorage.googleapis.com");
+  const lower = url.toLowerCase();
+  return lower.includes("firebasestorage.googleapis.com") || lower.includes("firebasestorage.app");
 }
 
 function extractStoragePath(imageURL: string): string | null {

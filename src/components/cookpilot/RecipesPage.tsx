@@ -43,6 +43,7 @@ import { StateBlock } from "@/components/ui/StateBlock";
 import { loadRecipePage } from "@/lib/cookpilot/firestore";
 import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
+import { consumeRecipeDeletedToast } from "@/lib/cookpilot/recipeDeletedToast";
 import type { RecipePageCursor, RecipeSummary } from "@/lib/cookpilot/types";
 
 const BROWSE_STATE_STORAGE_KEY = "cookpilot.recipeBrowseState";
@@ -125,6 +126,14 @@ function EmptyRecipeState({ onImport }: { onImport: () => void }) {
   );
 }
 
+function RecipeDeletedToast() {
+  return (
+    <div className="cp-board-toast" role="status" aria-live="polite">
+      Recipe deleted
+    </div>
+  );
+}
+
 function readSessionCacheForUser(userId: string | undefined) {
   if (!userId) return null;
   return getRecipesBrowseSessionCache(userId);
@@ -176,8 +185,11 @@ export function RecipesPage({
       initialSessionCache?.lastViewedTimestamps ?? createInitialLastViewedTimestamps(),
   );
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const stickyControlsSentinelRef = useRef<HTMLDivElement | null>(null);
   const tagScrollerRef = useRef<HTMLDivElement | null>(null);
   const [columnCount, setColumnCount] = useState(() => calcRecipeColumnCount());
+  const [isStickyControlsStuck, setIsStickyControlsStuck] = useState(false);
+  const [showRecipeDeletedToast, setShowRecipeDeletedToast] = useState(false);
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const anonymousRecipeCount = Math.max(totalRecipeCount, recipes.length);
   const importRequiresAuth =
@@ -216,6 +228,20 @@ export function RecipesPage({
   }, [loadingRecipes, recipes.length]);
 
   useEffect(() => {
+    if (!consumeRecipeDeletedToast()) return;
+    const showTimeout = window.setTimeout(() => {
+      setShowRecipeDeletedToast(true);
+    }, 0);
+    const hideTimeout = window.setTimeout(() => {
+      setShowRecipeDeletedToast(false);
+    }, 3600);
+    return () => {
+      window.clearTimeout(showTimeout);
+      window.clearTimeout(hideTimeout);
+    };
+  }, []);
+
+  useEffect(() => {
     saveStoredBrowseState({
       searchQuery,
       sortOption,
@@ -248,6 +274,21 @@ export function RecipesPage({
     function update() { setColumnCount(calcRecipeColumnCount()); }
     window.addEventListener("resize", update, { passive: true });
     return () => window.removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
+    const sentinel = stickyControlsSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsStickyControlsStuck(!entry.isIntersecting);
+      },
+      { threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -471,6 +512,7 @@ export function RecipesPage({
     return (
       <div className="cp-detail cp-detail--empty">
         <EmptyRecipeState onImport={openImportDialog} />
+        {showRecipeDeletedToast ? <RecipeDeletedToast /> : null}
         {isImportOpen && !importRequiresAuth ? (
           <ImportRecipeDialog
             onClose={closeImportDialog}
@@ -496,127 +538,130 @@ export function RecipesPage({
 
   return (
     <div className="cp-board">
-      <header className="cp-board__header cp-board__header--browse">
-        <div className="cp-board__title-row">
-          <div className="cp-board__title">
-            <h1>Recipes</h1>
-            <span>{totalRecipeCount}</span>
+      <div aria-hidden="true" className="cp-board__sticky-sentinel" ref={stickyControlsSentinelRef} />
+      <div className={`cp-board__sticky-controls ${isStickyControlsStuck ? "is-stuck" : ""}`.trim()}>
+        <header className="cp-board__header cp-board__header--browse">
+          <div className="cp-board__title-row">
+            <div className="cp-board__title">
+              <h1>Recipes</h1>
+              <span>{totalRecipeCount}</span>
+            </div>
+            <Button className="cp-board__new-recipe" onClick={openImportDialog}>
+              <Plus size={18} />
+              <span className="cp-board__new-recipe-label cp-board__new-recipe-label--full">
+                New recipe
+              </span>
+              <span className="cp-board__new-recipe-label cp-board__new-recipe-label--short">New</span>
+            </Button>
           </div>
-          <Button className="cp-board__new-recipe" onClick={openImportDialog}>
-            <Plus size={18} />
-            <span className="cp-board__new-recipe-label cp-board__new-recipe-label--full">
-              New recipe
-            </span>
-            <span className="cp-board__new-recipe-label cp-board__new-recipe-label--short">New</span>
-          </Button>
-        </div>
-      </header>
+        </header>
 
-      <div className="cp-board__controls">
-        <div className="cp-board__search-row">
-          <div className="cp-searchbar">
-            <MagnifyingGlass size={18} />
-            <input
-              aria-label="Search recipes"
-              id="recipes-search"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search by name or ingredient..."
-              type="text"
-              value={searchQuery}
-            />
-            {searchQuery ? (
-              <button
-                aria-label="Clear recipe search"
-                className="cp-searchbar__clear"
-                onClick={() => setSearchQuery("")}
-                type="button"
-              >
-                <X size={14} weight="bold" />
-              </button>
-            ) : null}
-          </div>
-
-          <div className="cp-board__browse-actions">
-            <label className="cp-sort-select">
-              <div className="cp-sort-select__control">
-                <select
-                  aria-label="Sort recipes"
-                  onChange={(event) => setSortOption(event.target.value as RecipeSortOption)}
-                  value={sortOption}
+        <div className="cp-board__controls">
+          <div className="cp-board__search-row">
+            <div className="cp-searchbar">
+              <MagnifyingGlass size={18} />
+              <input
+                aria-label="Search recipes"
+                id="recipes-search"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search by name or ingredient..."
+                type="text"
+                value={searchQuery}
+              />
+              {searchQuery ? (
+                <button
+                  aria-label="Clear recipe search"
+                  className="cp-searchbar__clear"
+                  onClick={() => setSearchQuery("")}
+                  type="button"
                 >
-                  {RECIPE_SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <CaretDown size={14} weight="bold" />
-              </div>
-            </label>
+                  <X size={14} weight="bold" />
+                </button>
+              ) : null}
+            </div>
 
-            {allKnownTags.length > 0 ? (
-              <div
-                className={[
-                  "cp-filter-strip",
-                  tagScrollEdges.canScrollLeft ? "cp-filter-strip--scroll-left" : "",
-                  tagScrollEdges.canScrollRight ? "cp-filter-strip--scroll-right" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {tagScrollEdges.canScrollLeft ? (
-                  <button
-                    aria-label="Scroll tag filters left"
-                    className="cp-filter-strip__arrow cp-filter-strip__arrow--left"
-                    onClick={() => scrollTagFilters("left")}
-                    type="button"
+            <div className="cp-board__browse-actions">
+              <label className="cp-sort-select">
+                <div className="cp-sort-select__control">
+                  <select
+                    aria-label="Sort recipes"
+                    onChange={(event) => setSortOption(event.target.value as RecipeSortOption)}
+                    value={sortOption}
                   >
-                    <CaretLeft size={18} weight="bold" />
-                  </button>
-                ) : null}
-                <div
-                  aria-label="Filter by tag"
-                  className="cp-filter-strip__scroller"
-                  ref={tagScrollerRef}
-                  role="group"
-                >
-                  {allKnownTags.map((tag) => {
-                    const isActive = activeTagFilters.has(tag);
-
-                    return (
-                      <button
-                        aria-pressed={isActive}
-                        className={`cp-filter-tag ${isActive ? "is-active" : ""}`.trim()}
-                        key={tag}
-                        onClick={() => toggleTagFilter(tag)}
-                        type="button"
-                      >
-                        <TagIconGlyph tag={tag} />
-                        <span>{tag}</span>
-                        {isActive ? (
-                          <X
-                            aria-hidden="true"
-                            className="cp-filter-tag__remove"
-                            size={13}
-                            weight="bold"
-                          />
-                        ) : null}
-                      </button>
-                    );
-                  })}
+                    {RECIPE_SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <CaretDown size={14} weight="bold" />
                 </div>
-                {tagScrollEdges.canScrollRight ? (
-                  <button
-                    aria-label="Scroll tag filters right"
-                    className="cp-filter-strip__arrow cp-filter-strip__arrow--right"
-                    onClick={() => scrollTagFilters("right")}
-                    type="button"
+              </label>
+
+              {allKnownTags.length > 0 ? (
+                <div
+                  className={[
+                    "cp-filter-strip",
+                    tagScrollEdges.canScrollLeft ? "cp-filter-strip--scroll-left" : "",
+                    tagScrollEdges.canScrollRight ? "cp-filter-strip--scroll-right" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {tagScrollEdges.canScrollLeft ? (
+                    <button
+                      aria-label="Scroll tag filters left"
+                      className="cp-filter-strip__arrow cp-filter-strip__arrow--left"
+                      onClick={() => scrollTagFilters("left")}
+                      type="button"
+                    >
+                      <CaretLeft size={18} weight="bold" />
+                    </button>
+                  ) : null}
+                  <div
+                    aria-label="Filter by tag"
+                    className="cp-filter-strip__scroller"
+                    ref={tagScrollerRef}
+                    role="group"
                   >
-                    <CaretRight size={18} weight="bold" />
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+                    {allKnownTags.map((tag) => {
+                      const isActive = activeTagFilters.has(tag);
+
+                      return (
+                        <button
+                          aria-pressed={isActive}
+                          className={`cp-filter-tag ${isActive ? "is-active" : ""}`.trim()}
+                          key={tag}
+                          onClick={() => toggleTagFilter(tag)}
+                          type="button"
+                        >
+                          <TagIconGlyph tag={tag} />
+                          <span>{tag}</span>
+                          {isActive ? (
+                            <X
+                              aria-hidden="true"
+                              className="cp-filter-tag__remove"
+                              size={13}
+                              weight="bold"
+                            />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {tagScrollEdges.canScrollRight ? (
+                    <button
+                      aria-label="Scroll tag filters right"
+                      className="cp-filter-strip__arrow cp-filter-strip__arrow--right"
+                      onClick={() => scrollTagFilters("right")}
+                      type="button"
+                    >
+                      <CaretRight size={18} weight="bold" />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
@@ -658,6 +703,7 @@ export function RecipesPage({
       {nextCursor ? (
         <div aria-hidden="true" className="cp-board__sentinel" ref={loadMoreSentinelRef} />
       ) : null}
+      {showRecipeDeletedToast ? <RecipeDeletedToast /> : null}
       {isImportOpen && !importRequiresAuth ? (
         <ImportRecipeDialog
           onClose={closeImportDialog}
@@ -691,10 +737,10 @@ function ImportRecipeDialog({
   onComplete: (recipeId: string) => void;
 }) {
   return (
-    <ModalShell onClose={onClose} variant="import">
+    <ModalShell aria-labelledby="new-recipe-title" onClose={onClose} variant="import">
       <section className="cp-settings-card">
         <div className="cp-settings-card__header">
-          <h2>New recipe</h2>
+          <h2 id="new-recipe-title">New recipe</h2>
           <Button
             aria-label="Close new recipe"
             className="cp-settings-card__close"
@@ -717,8 +763,8 @@ function SettingsDialog({
   onClose: () => void;
 }) {
   return (
-    <ModalShell onClose={onClose} variant="settings">
-      <SettingsPanel onClose={onClose} />
+    <ModalShell aria-labelledby="settings-title" onClose={onClose} variant="settings">
+      <SettingsPanel onClose={onClose} titleId="settings-title" />
     </ModalShell>
   );
 }

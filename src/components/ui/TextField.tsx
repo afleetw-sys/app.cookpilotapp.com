@@ -45,7 +45,6 @@ export function TextField(props: InputProps | TextareaProps) {
             aria-label={showPassword ? "Hide password" : "Show password"}
             className="cp-field__password-toggle"
             onClick={() => setShowPassword((v) => !v)}
-            tabIndex={-1}
             type="button"
           >
             {showPassword ? <EyeSlash size={18} /> : <Eye size={18} />}

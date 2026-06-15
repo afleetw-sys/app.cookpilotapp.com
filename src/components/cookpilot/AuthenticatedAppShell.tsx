@@ -35,8 +35,8 @@ export function AuthenticatedAppShell({
         }
       />
       {isSettingsOpen ? (
-        <ModalShell onClose={() => setIsSettingsOpen(false)} variant="settings">
-          <SettingsPanel onClose={() => setIsSettingsOpen(false)} />
+        <ModalShell aria-labelledby="settings-title" onClose={() => setIsSettingsOpen(false)} variant="settings">
+          <SettingsPanel onClose={() => setIsSettingsOpen(false)} titleId="settings-title" />
         </ModalShell>
       ) : null}
     </>

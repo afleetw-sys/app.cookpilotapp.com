@@ -1,10 +1,11 @@
-import type { RecipeData } from "@/lib/cookpilot/types";
+import type { RecipeData, RecipeThemeSeedColors } from "@/lib/cookpilot/types";
 
 export const IMPORT_DRAFT_SEARCH_PARAM = "draft";
 
 type ImportDraftPayload = {
   recipe: RecipeData;
   sourceURL: string | null;
+  themeSeedColors?: RecipeThemeSeedColors | null;
 };
 
 function draftKey(recipeId: string) {
@@ -15,9 +16,14 @@ export function savePendingImportDraft(
   recipeId: string,
   recipe: RecipeData,
   sourceURL: string | null,
+  themeSeedColors?: RecipeThemeSeedColors | null,
 ): void {
   try {
-    sessionStorage.setItem(draftKey(recipeId), JSON.stringify({ recipe, sourceURL }));
+    sessionStorage.setItem(draftKey(recipeId), JSON.stringify({
+      recipe,
+      sourceURL,
+      themeSeedColors: themeSeedColors ?? null,
+    }));
   } catch {
     // sessionStorage unavailable (private browsing quota, etc.) — import will fall back to immediate save
   }

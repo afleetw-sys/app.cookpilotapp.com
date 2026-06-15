@@ -29,6 +29,12 @@ const EMPTY_RECIPE_SUGGESTIONS = [
   "Create a salad recipe",
 ];
 
+const EMPTY_IMPORTED_RECIPE_SUGGESTIONS = [
+  "Turn my notes into a recipe",
+  "Fill in ingredients and steps",
+  "Create a complete recipe draft",
+];
+
 function includesAny(value: string, keywords: string[]) {
   return keywords.some((keyword) => value.includes(keyword));
 }
@@ -39,13 +45,18 @@ function recipeIngredientNames(recipe: RecipeData) {
     .map((ingredient) => ingredient.name.toLowerCase());
 }
 
-export function defaultAIEditSuggestions(recipe: RecipeData): string[] {
+export function defaultAIEditSuggestions(
+  recipe: RecipeData,
+  options?: { sourceURL?: string | null },
+): string[] {
   const hasContent = Boolean(
     recipe.title?.trim() ||
     recipe.ingredientSections.some((section) => section.ingredients.length > 0) ||
     recipe.instructionSections.some((section) => section.instructions.length > 0),
   );
-  if (!hasContent) return EMPTY_RECIPE_SUGGESTIONS;
+  if (!hasContent) {
+    return options?.sourceURL ? EMPTY_IMPORTED_RECIPE_SUGGESTIONS : EMPTY_RECIPE_SUGGESTIONS;
+  }
 
   const ingredientNames = recipeIngredientNames(recipe);
   const titleDescription = `${recipe.title ?? ""} ${recipe.description ?? ""}`.toLowerCase();

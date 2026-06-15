@@ -54,10 +54,36 @@ export type ParseRecipeFromURLRequest = {
   importSessionID?: string;
 } & ClientRecipeExtraction;
 
+export type ParseRecipeFromImagesResponse = {
+  recipe: RecipeData;
+  usage?: unknown;
+  ocrText?: string;
+  usedAIAssist?: boolean;
+  deterministicStrong?: boolean;
+};
+
+export type ParseRecipeFromImagesRequest = {
+  images: string[];
+};
+
+type ParseRecipeFromImagesCallableResponse = {
+  recipe?: RecipeData;
+  recipeJSON?: string;
+  usage?: unknown;
+  ocrText?: string;
+  usedAIAssist?: boolean;
+  deterministicStrong?: boolean;
+};
+
 const parseRecipeFromURLCallable = httpsCallable<
   ParseRecipeFromURLRequest,
   ParseRecipeFromUrlResponse
 >(functions, "parseRecipeFromURL");
+
+const parseRecipeFromImagesCallable = httpsCallable<
+  ParseRecipeFromImagesRequest,
+  ParseRecipeFromImagesCallableResponse
+>(functions, "parseRecipeFromImages");
 
 const parseSocialRecipeCallable = httpsCallable<
   ParseSocialRecipeRequest,
@@ -122,6 +148,42 @@ export async function parseRecipeFromURL(
     ...(options?.extraction?.imageURL ? { imageURL: options.extraction.imageURL } : {}),
   });
   return result.data;
+}
+
+export async function parseRecipeFromImages(
+  images: string[],
+): Promise<ParseRecipeFromImagesResponse> {
+  const result = await parseRecipeFromImagesCallable({ images });
+  return {
+    recipe: recipeDataFromImageParseResponse(result.data),
+    usage: result.data.usage,
+    ocrText: result.data.ocrText,
+    usedAIAssist: result.data.usedAIAssist,
+    deterministicStrong: result.data.deterministicStrong,
+  };
+}
+
+function recipeDataFromImageParseResponse(response: ParseRecipeFromImagesCallableResponse): RecipeData {
+  const parsedRecipe = response.recipe ?? recipeDataFromJSON(response.recipeJSON);
+  if (
+    !parsedRecipe ||
+    typeof parsedRecipe !== "object" ||
+    !Array.isArray(parsedRecipe.ingredientSections) ||
+    !Array.isArray(parsedRecipe.instructionSections)
+  ) {
+    throw new Error("Image parser returned an invalid recipe.");
+  }
+  return parsedRecipe;
+}
+
+function recipeDataFromJSON(recipeJSON: string | undefined): RecipeData | null {
+  if (!recipeJSON) return null;
+  try {
+    return JSON.parse(recipeJSON) as RecipeData;
+  } catch (error) {
+    console.error("[ImageImport] Failed to parse recipeJSON", error);
+    throw new Error("Image parser returned malformed recipe JSON.");
+  }
 }
 
 /**

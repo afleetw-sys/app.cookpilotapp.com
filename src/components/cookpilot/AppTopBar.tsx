@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { GearSix, User, X } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useClickOutside } from "@/lib/useClickOutside";
 import { TextField } from "@/components/ui/TextField";
@@ -42,6 +42,8 @@ export function AppTopBar({
 
   const initials = initialsForUser(user?.email, user?.displayName);
   const isAnonymous = user?.isAnonymous ?? true;
+  const accountName = user?.displayName?.trim() || "Signed in";
+  const accountEmail = user?.email?.trim() || "No email on this account";
 
   async function handleSignOut() {
     setAccountError(null);
@@ -70,6 +72,20 @@ export function AppTopBar({
       }
 
       setAccountError("We couldn’t delete your account. Please try again.");
+    }
+  }
+
+  function handleDeleteSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isWorking) {
+      void handleDeleteCurrentAccount();
+    }
+  }
+
+  function handleMenuKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsMenuOpen(false);
     }
   }
 
@@ -114,9 +130,31 @@ export function AppTopBar({
         ) : (
           <div className="cp-topbar__account" ref={accountMenuRef}>
             {isMenuOpen ? (
-              <div aria-label="Account actions" className="cp-rail__menu" role="menu">
+              <div
+                aria-label="Account actions"
+                className="cp-rail__menu"
+                onKeyDown={handleMenuKeyDown}
+                role="menu"
+              >
+                <button
+                  aria-label="Close account menu"
+                  className="cp-rail__menu-close"
+                  onClick={() => setIsMenuOpen(false)}
+                  type="button"
+                >
+                  <X size={16} />
+                </button>
+                <div className="cp-rail__account-summary">
+                  <div className="cp-rail__account-avatar" aria-hidden="true">
+                    {initials ? <span>{initials}</span> : <User size={17} weight="regular" />}
+                  </div>
+                  <div className="cp-rail__account-text">
+                    <p className="cp-rail__account-name">{accountName}</p>
+                    <p className="cp-rail__account-email">{accountEmail}</p>
+                  </div>
+                </div>
                 {showDeleteConfirm ? (
-                  <>
+                  <form className="cp-rail__menu-form" onSubmit={handleDeleteSubmit}>
                     <div className="cp-rail__menu-header">
                       <div>
                         <p className="cp-rail__menu-title">Delete account?</p>
@@ -124,14 +162,6 @@ export function AppTopBar({
                           This permanently removes your CookPilot account and saved recipes.
                         </p>
                       </div>
-                      <button
-                        aria-label="Close account menu"
-                        className="cp-rail__menu-close"
-                        onClick={() => setIsMenuOpen(false)}
-                        type="button"
-                      >
-                        <X size={16} />
-                      </button>
                     </div>
                     <TextField
                       label="Password if needed"
@@ -143,8 +173,7 @@ export function AppTopBar({
                     <button
                       className="cp-rail__menu-action cp-rail__menu-action--danger"
                       disabled={isWorking}
-                      onClick={() => void handleDeleteCurrentAccount()}
-                      type="button"
+                      type="submit"
                     >
                       Delete account
                     </button>
@@ -160,19 +189,11 @@ export function AppTopBar({
                     >
                       Cancel
                     </button>
-                  </>
+                  </form>
                 ) : (
                   <>
                     <div className="cp-rail__menu-header">
                       <p className="cp-rail__menu-title">Account</p>
-                      <button
-                        aria-label="Close account menu"
-                        className="cp-rail__menu-close"
-                        onClick={() => setIsMenuOpen(false)}
-                        type="button"
-                      >
-                        <X size={16} />
-                      </button>
                     </div>
                     <button
                       className="cp-rail__menu-action cp-rail__menu-action--danger"

@@ -50,7 +50,9 @@ type Cluster = {
 export async function extractThemeSeedColors(imageUrl: string): Promise<RecipeThemeSeedColors | null> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (imageUrl.startsWith("http")) {
+      img.crossOrigin = "anonymous";
+    }
 
     img.onload = () => {
       try {
@@ -95,11 +97,11 @@ export async function extractThemeSeedColors(imageUrl: string): Promise<RecipeTh
         }
 
         const total = pixels.length;
+        const minPrimary = Math.max(1, Math.trunc(total * MIN_CLUSTER_SHARE));
+        const minSecondary = Math.max(1, Math.trunc(total * MIN_CLUSTER_SHARE_SEC));
         const clusters: Cluster[] = [];
 
         for (const bucketPixels of buckets.values()) {
-          if (bucketPixels.length < total * MIN_CLUSTER_SHARE) continue;
-
           // iOS clusterRep: pixel with max vibrancy (s*b) in the cluster
           let repH = 0, repS = 0, repB = 0, repVibrancy = -1;
           for (const [h, s, b] of bucketPixels) {
@@ -114,17 +116,21 @@ export async function extractThemeSeedColors(imageUrl: string): Promise<RecipeTh
           clusters.push({ h: repH, s: repS, b: repB, count: bucketPixels.length, vibrancy: repVibrancy, score, pixels: bucketPixels });
         }
 
-        if (clusters.length === 0) { resolve(null); return; }
-
-        clusters.sort((a, z) => z.score - a.score);
-        const primary = clusters[0];
+        const primaryClusters = clusters
+          .filter((cluster) => cluster.count >= minPrimary)
+          .sort((a, z) => z.score - a.score);
+        if (primaryClusters.length === 0) { resolve(null); return; }
+        const primary = primaryClusters[0];
 
         // Find a qualifying secondary cluster (different hue, enough vibrancy and count)
-        let secondary: { h: number; s: number; b: number } | null = clusters.find((c) => {
-          if (c === primary) return false;
-          const hueDiff = Math.min(Math.abs(c.h - primary.h), 1 - Math.abs(c.h - primary.h));
-          return hueDiff >= MIN_HUE_DISTANCE && c.vibrancy >= MIN_VIBRANCY_SEC && c.count >= total * MIN_CLUSTER_SHARE_SEC;
-        }) ?? null;
+        let secondary: { h: number; s: number; b: number } | null = clusters
+          .filter((cluster) => cluster.count >= minSecondary)
+          .filter((cluster) => {
+            if (cluster === primary) return false;
+            const hueDiff = Math.min(Math.abs(cluster.h - primary.h), 1 - Math.abs(cluster.h - primary.h));
+            return hueDiff >= MIN_HUE_DISTANCE && cluster.vibrancy >= MIN_VIBRANCY_SEC;
+          })
+          .sort((a, z) => z.score - a.score)[0] ?? null;
 
         if (!secondary) {
           // iOS fallback: 2nd most vibrant pixel in the primary cluster
