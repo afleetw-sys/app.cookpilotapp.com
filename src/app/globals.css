@@ -1836,6 +1836,16 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  gap: 0;
+}
+
+.cp-detail--page > * + * {
+  margin-top: var(--cp-space-6);
+}
+
+.cp-detail--page > .cp-detail__topbar,
+.cp-detail--page > .cp-detail__hero {
+  margin-top: 0;
 }
 
 .cp-app-shell:has(.cp-detail--page) {
@@ -4143,8 +4153,17 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   }
 
   .cp-detail.cp-detail--page {
-    gap: var(--cp-space-4);
+    gap: 0;
     padding: var(--cp-space-3) var(--cp-space-4) var(--cp-space-5);
+  }
+
+  .cp-detail--page > * + * {
+    margin-top: var(--cp-space-4);
+  }
+
+  .cp-detail--page > .cp-detail__topbar,
+  .cp-detail--page > .cp-detail__hero {
+    margin-top: 0;
   }
 
   .cp-detail__section-card {
