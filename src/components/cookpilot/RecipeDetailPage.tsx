@@ -1676,7 +1676,8 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                   </span>
                 ) : (
                   <button
-                    className="cp-detail__tape-chip cp-detail__tape-chip--add"
+                    aria-label="Add prep time"
+                    className="cp-detail__tape-chip"
                     disabled={!user || savingQuickTime}
                     onClick={() => openQuickTimeEditor("prep")}
                     type="button"
@@ -1692,7 +1693,8 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                   </span>
                 ) : (
                   <button
-                    className="cp-detail__tape-chip cp-detail__tape-chip--add"
+                    aria-label="Add cook time"
+                    className="cp-detail__tape-chip"
                     disabled={!user || savingQuickTime}
                     onClick={() => openQuickTimeEditor("cook")}
                     type="button"
@@ -1701,34 +1703,6 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                     Add cook
                   </button>
                 )}
-                {quickTimeField ? (
-                  <div className="cp-detail__quick-time-editor">
-                    <TimePickerField
-                      label={quickTimeField === "prep" ? "Prep time" : "Cook time"}
-                      value={quickTimeValue}
-                      onChange={setQuickTimeValue}
-                    />
-                    <div className="cp-detail__quick-time-actions">
-                      <button
-                        className="cp-detail__quick-time-action"
-                        onClick={closeQuickTimeEditor}
-                        type="button"
-                      >
-                        <X size={13} weight="bold" />
-                        Cancel
-                      </button>
-                      <button
-                        className="cp-detail__quick-time-action cp-detail__quick-time-action--primary"
-                        disabled={!quickTimeValue || savingQuickTime}
-                        onClick={() => void handleSaveQuickTime()}
-                        type="button"
-                      >
-                        {savingQuickTime ? <ArrowClockwise className="cp-spin" size={13} /> : <Check size={13} weight="bold" />}
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               {recipeTags.length > 0 ? (
@@ -2140,6 +2114,66 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             Delete recipe
           </Button>
         </section>
+      ) : null}
+
+      {quickTimeField ? (
+        <ModalShell
+          aria-labelledby="quick-time-dialog-title"
+          onClose={savingQuickTime ? () => {} : closeQuickTimeEditor}
+          variant="confirm"
+        >
+          <form
+            className="cp-quick-time-dialog"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveQuickTime();
+            }}
+          >
+            <div className="cp-quick-time-dialog__header">
+              <div className="cp-quick-time-dialog__icon" aria-hidden="true">
+                {quickTimeField === "prep" ? (
+                  <Timer size={18} weight="bold" />
+                ) : (
+                  <Fire size={18} weight="bold" />
+                )}
+              </div>
+              <div>
+                <h2 id="quick-time-dialog-title">
+                  Add {quickTimeField === "prep" ? "prep" : "cook"} time
+                </h2>
+                <p>
+                  Set the {quickTimeField === "prep" ? "prep" : "cook"} time for this recipe.
+                </p>
+              </div>
+            </div>
+            <TimePickerField
+              label={quickTimeField === "prep" ? "Prep time" : "Cook time"}
+              value={quickTimeValue}
+              onChange={setQuickTimeValue}
+            />
+            <div className="cp-quick-time-dialog__actions">
+              <Button
+                data-autofocus="true"
+                disabled={savingQuickTime}
+                onClick={closeQuickTimeEditor}
+                size="compact"
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="cp-button--save"
+                disabled={!quickTimeValue || savingQuickTime}
+                size="compact"
+                type="submit"
+                variant="secondary"
+              >
+                {savingQuickTime ? <ArrowClockwise className="cp-spin" size={16} /> : <Check size={16} />}
+                Save
+              </Button>
+            </div>
+          </form>
+        </ModalShell>
       ) : null}
 
       {showDeleteConfirm ? (

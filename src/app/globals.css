@@ -2011,19 +2011,7 @@ button.cp-detail__tape-chip {
   font: inherit;
 }
 
-.cp-detail__tape-chip--add {
-  border: 1px dashed color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 28%, var(--cp-line));
-  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 8%, var(--recipe-current-bg, var(--cp-card)));
-  color: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 52%, var(--cp-ink));
-  font-weight: 700;
-}
-
-.cp-detail__tape-chip--add:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 42%, var(--cp-line));
-  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 12%, var(--recipe-current-bg, var(--cp-card)));
-}
-
-.cp-detail__tape-chip--add:disabled {
+button.cp-detail__tape-chip:disabled {
   cursor: default;
   opacity: 0.55;
 }
@@ -2035,63 +2023,6 @@ button.cp-detail__tape-chip {
 html[data-theme="dark"] .cp-detail__tape-chip {
   background: var(--recipe-current-chip-fill, var(--recipe-current-input-fill, var(--cp-card)));
   color: var(--recipe-current-chip-text, var(--cp-ink));
-}
-
-html[data-theme="dark"] .cp-detail__tape-chip--add {
-  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 11%, var(--recipe-current-input-fill, var(--cp-card)));
-  color: var(--cp-ink);
-}
-
-.cp-detail__quick-time-editor {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-  width: 100%;
-  max-width: 520px;
-  margin-top: 2px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 14%, var(--cp-line));
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--recipe-current-input-fill, var(--cp-card)) 76%, transparent);
-}
-
-.cp-detail__quick-time-editor .cp-time-picker {
-  flex: 1 1 230px;
-  min-width: 210px;
-}
-
-.cp-detail__quick-time-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cp-detail__quick-time-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--cp-ink) 7%, transparent);
-  color: var(--cp-ink-soft);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.cp-detail__quick-time-action--primary {
-  background: var(--cp-ink);
-  color: var(--cp-card);
-}
-
-.cp-detail__quick-time-action:disabled {
-  cursor: default;
-  opacity: 0.55;
 }
 
 .cp-detail__tags {
@@ -2987,6 +2918,50 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
 }
 
 .cp-delete-confirm__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cp-space-3);
+}
+
+.cp-quick-time-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-5);
+}
+
+.cp-quick-time-dialog__header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: var(--cp-space-3);
+}
+
+.cp-quick-time-dialog__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 12%, var(--cp-card));
+  color: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 62%, var(--cp-ink));
+}
+
+.cp-quick-time-dialog h2 {
+  margin: 0 0 4px;
+  color: var(--cp-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.cp-quick-time-dialog p {
+  margin: 0;
+  color: var(--cp-ink-soft);
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+
+.cp-quick-time-dialog__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
