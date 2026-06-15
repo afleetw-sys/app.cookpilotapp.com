@@ -3595,17 +3595,26 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   padding: 0 14px;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
-  background: rgba(127, 127, 127, 0.08);
+  background: #fff;
   color: var(--cp-ink);
   cursor: pointer;
   font-weight: 700;
 }
 
 .cp-import-mode-toggle__item.is-active {
-  background: color-mix(in srgb, var(--cp-ink-soft) 18%, var(--cp-card));
+  background: #eef1f4;
   color: var(--cp-ink);
-  border-color: transparent;
+  border-color: #d8dde3;
   box-shadow: 0 1px 3px rgba(31, 38, 54, 0.08);
+}
+
+html[data-theme="dark"] .cp-import-mode-toggle__item {
+  background: var(--cp-card);
+}
+
+html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
+  background: color-mix(in srgb, var(--cp-card) 82%, white);
+  border-color: color-mix(in srgb, var(--cp-line) 72%, white);
 }
 
 .cp-import-mode-toggle__item:disabled {
