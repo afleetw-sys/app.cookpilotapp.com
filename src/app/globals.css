@@ -1918,12 +1918,13 @@ html[data-theme="dark"] .cp-detail--page {
 .cp-detail__hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 620px);
+  grid-template-columns: minmax(360px, 620px) minmax(420px, 620px);
   gap: clamp(48px, 4vw, 64px);
   align-items: center;
-  width: min(100%, 1480px);
+  justify-content: center;
+  width: 100%;
   margin: 0 auto;
-  padding: clamp(24px, 3vw, 40px) 0;
+  padding: clamp(24px, 3vw, 40px);
   border: 1px solid var(--cp-line);
   border-radius: 28px;
   background: transparent;
@@ -3802,7 +3803,7 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
     display: flex;
     flex-direction: column;
     gap: var(--cp-space-5);
-    padding: var(--cp-space-5) 0;
+    padding: var(--cp-space-5);
   }
 
   .cp-detail__hero-copy {
@@ -3845,7 +3846,7 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
     display: flex;
     flex-direction: column;
     gap: var(--cp-space-5);
-    padding: var(--cp-space-5) 0;
+    padding: var(--cp-space-5);
   }
 
   .cp-detail__hero-copy {
