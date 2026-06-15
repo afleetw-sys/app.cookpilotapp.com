@@ -1063,9 +1063,8 @@ ol {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
   min-height: 48px;
-  padding: 0 40px 0 14px;
+  padding: 0 40px 0 0;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
   background: color-mix(in srgb, var(--cp-card) 82%, var(--cp-page));
@@ -1081,14 +1080,16 @@ ol {
 }
 
 .cp-sort-select__icon {
-  flex: 0 0 auto;
+  position: absolute;
+  left: 16px;
   color: var(--cp-ink-soft);
+  pointer-events: none;
 }
 
 .cp-sort-select__control select {
   appearance: none;
   min-height: 46px;
-  padding: 0;
+  padding: 0 0 0 42px;
   border: 0;
   outline: 0;
   background: transparent;
@@ -1098,7 +1099,7 @@ ol {
   font-weight: 650;
 }
 
-.cp-sort-select__control svg {
+.cp-sort-select__caret {
   position: absolute;
   right: 16px;
   pointer-events: none;

@@ -596,7 +596,7 @@ export function RecipesPage({
                       </option>
                     ))}
                   </select>
-                  <CaretDown size={14} weight="bold" />
+                  <CaretDown className="cp-sort-select__caret" size={14} weight="bold" />
                 </div>
               </label>
 
