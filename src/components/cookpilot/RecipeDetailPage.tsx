@@ -524,6 +524,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const [allKnownTags, setAllKnownTags] = useState<string[]>([]);
   const [saveEditError, setSaveEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [quickTimeField, setQuickTimeField] = useState<"prep" | "cook" | null>(null);
+  const [quickTimeValue, setQuickTimeValue] = useState<string | null>(null);
+  const [savingQuickTime, setSavingQuickTime] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -1097,6 +1100,53 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     }
   }
 
+  function openQuickTimeEditor(field: "prep" | "cook") {
+    setQuickTimeField(field);
+    setQuickTimeValue(
+      field === "prep"
+        ? selectedRecipe?.recipe.prepTime ?? null
+        : selectedRecipe?.recipe.cookTime ?? null,
+    );
+    setSaveEditError(null);
+  }
+
+  function closeQuickTimeEditor() {
+    setQuickTimeField(null);
+    setQuickTimeValue(null);
+  }
+
+  async function handleSaveQuickTime() {
+    if (!user || !selectedRecipe || !quickTimeField || !quickTimeValue) return;
+
+    setSavingQuickTime(true);
+    setSaveEditError(null);
+
+    try {
+      const updatedRecipe = buildSavedRecipe({
+        id: selectedRecipe.id,
+        recipe: {
+          ...selectedRecipe.recipe,
+          prepTime: quickTimeField === "prep" ? quickTimeValue : selectedRecipe.recipe.prepTime,
+          cookTime: quickTimeField === "cook" ? quickTimeValue : selectedRecipe.recipe.cookTime,
+        },
+        sourceURL: selectedRecipe.sourceURL,
+        createdAt: selectedRecipe.createdAt,
+        preferredServings: selectedRecipe.preferredServings,
+        checkedIngredientIndices,
+        preferredIngredientMeasurementRaw: selectedRecipe.preferredIngredientMeasurementRaw,
+        themeSeedColors: selectedRecipe.themeSeedColors,
+      });
+
+      await persistRecipe(user.uid, updatedRecipe);
+      closeQuickTimeEditor();
+    } catch (error) {
+      console.error(error);
+      setSaveEditError("We couldn’t save that time. Please try again.");
+    } finally {
+      setSavingQuickTime(false);
+    }
+  }
+
   function updateDraftRecipe(updater: (recipe: RecipeData) => RecipeData) {
     setEditDraft((current) => current ? { ...current, recipe: updater(current.recipe) } : current);
   }
@@ -1618,22 +1668,68 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             </a>
               ) : null}
 
-              {(selectedRecipe.recipe.prepTime || selectedRecipe.recipe.cookTime) ? (
-            <div className="cp-detail__tape-chips">
-              {selectedRecipe.recipe.prepTime ? (
-                <span className="cp-detail__tape-chip">
-                  <Timer size={13} weight="bold" />
-                  {selectedRecipe.recipe.prepTime} prep
-                </span>
-              ) : null}
-              {selectedRecipe.recipe.cookTime ? (
-                <span className="cp-detail__tape-chip">
-                  <Fire size={13} weight="bold" />
-                  {selectedRecipe.recipe.cookTime} cook
-                </span>
-              ) : null}
-            </div>
-              ) : null}
+              <div className="cp-detail__tape-chips">
+                {selectedRecipe.recipe.prepTime ? (
+                  <span className="cp-detail__tape-chip">
+                    <Timer size={13} weight="bold" />
+                    {selectedRecipe.recipe.prepTime} prep
+                  </span>
+                ) : (
+                  <button
+                    className="cp-detail__tape-chip cp-detail__tape-chip--add"
+                    disabled={!user || savingQuickTime}
+                    onClick={() => openQuickTimeEditor("prep")}
+                    type="button"
+                  >
+                    <Plus size={13} weight="bold" />
+                    Add prep
+                  </button>
+                )}
+                {selectedRecipe.recipe.cookTime ? (
+                  <span className="cp-detail__tape-chip">
+                    <Fire size={13} weight="bold" />
+                    {selectedRecipe.recipe.cookTime} cook
+                  </span>
+                ) : (
+                  <button
+                    className="cp-detail__tape-chip cp-detail__tape-chip--add"
+                    disabled={!user || savingQuickTime}
+                    onClick={() => openQuickTimeEditor("cook")}
+                    type="button"
+                  >
+                    <Plus size={13} weight="bold" />
+                    Add cook
+                  </button>
+                )}
+                {quickTimeField ? (
+                  <div className="cp-detail__quick-time-editor">
+                    <TimePickerField
+                      label={quickTimeField === "prep" ? "Prep time" : "Cook time"}
+                      value={quickTimeValue}
+                      onChange={setQuickTimeValue}
+                    />
+                    <div className="cp-detail__quick-time-actions">
+                      <button
+                        className="cp-detail__quick-time-action"
+                        onClick={closeQuickTimeEditor}
+                        type="button"
+                      >
+                        <X size={13} weight="bold" />
+                        Cancel
+                      </button>
+                      <button
+                        className="cp-detail__quick-time-action cp-detail__quick-time-action--primary"
+                        disabled={!quickTimeValue || savingQuickTime}
+                        onClick={() => void handleSaveQuickTime()}
+                        type="button"
+                      >
+                        {savingQuickTime ? <ArrowClockwise className="cp-spin" size={13} /> : <Check size={13} weight="bold" />}
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
 
               {recipeTags.length > 0 ? (
             <div className="cp-detail__tags">

@@ -2005,6 +2005,29 @@ html[data-theme="dark"] .cp-detail--page {
   white-space: nowrap;
 }
 
+button.cp-detail__tape-chip {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cp-detail__tape-chip--add {
+  border: 1px dashed color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 28%, var(--cp-line));
+  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 8%, var(--recipe-current-bg, var(--cp-card)));
+  color: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 52%, var(--cp-ink));
+  font-weight: 700;
+}
+
+.cp-detail__tape-chip--add:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 42%, var(--cp-line));
+  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 12%, var(--recipe-current-bg, var(--cp-card)));
+}
+
+.cp-detail__tape-chip--add:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .cp-detail__tape-chip:nth-child(even) {
   transform: rotate(1.1deg);
 }
@@ -2012,6 +2035,63 @@ html[data-theme="dark"] .cp-detail--page {
 html[data-theme="dark"] .cp-detail__tape-chip {
   background: var(--recipe-current-chip-fill, var(--recipe-current-input-fill, var(--cp-card)));
   color: var(--recipe-current-chip-text, var(--cp-ink));
+}
+
+html[data-theme="dark"] .cp-detail__tape-chip--add {
+  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 11%, var(--recipe-current-input-fill, var(--cp-card)));
+  color: var(--cp-ink);
+}
+
+.cp-detail__quick-time-editor {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+  margin-top: 2px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 14%, var(--cp-line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--recipe-current-input-fill, var(--cp-card)) 76%, transparent);
+}
+
+.cp-detail__quick-time-editor .cp-time-picker {
+  flex: 1 1 230px;
+  min-width: 210px;
+}
+
+.cp-detail__quick-time-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cp-detail__quick-time-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cp-ink) 7%, transparent);
+  color: var(--cp-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cp-detail__quick-time-action--primary {
+  background: var(--cp-ink);
+  color: var(--cp-card);
+}
+
+.cp-detail__quick-time-action:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .cp-detail__tags {
