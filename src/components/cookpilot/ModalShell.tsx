@@ -3,7 +3,7 @@
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-type ModalVariant = "confirm" | "import" | "settings" | "paywall" | "measurements";
+type ModalVariant = "confirm" | "filters" | "import" | "settings" | "paywall" | "measurements";
 
 function cardClass(variant: ModalVariant): string {
   if (variant === "paywall") return "cp-modal-card cp-paywall-card";

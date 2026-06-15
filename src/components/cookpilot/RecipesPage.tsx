@@ -4,6 +4,7 @@ import {
   CaretDown,
   CaretLeft,
   CaretRight,
+  FunnelSimple,
   MagnifyingGlass,
   Plus,
   SortAscending,
@@ -181,6 +182,7 @@ export function RecipesPage({
   const [isImportOpen, setIsImportOpen] = useState(initialDialog === "import");
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(initialDialog === "settings");
+  const [isMobileFilterDrawerOpen, setIsMobileFilterDrawerOpen] = useState(false);
   const [lastViewedTimestamps] = useState<Record<string, number>>(
     () =>
       initialSessionCache?.lastViewedTimestamps ?? createInitialLastViewedTimestamps(),
@@ -483,6 +485,10 @@ export function RecipesPage({
     });
   }
 
+  function clearTagFilters() {
+    setActiveTagFilters(new Set());
+  }
+
   function markRecipeOpened(recipeId: string) {
     saveStoredBrowseState({ scrollY: window.scrollY });
     recordRecipeViewedAt(recipeId);
@@ -580,6 +586,22 @@ export function RecipesPage({
                 </button>
               ) : null}
             </div>
+
+            <button
+              aria-label={
+                activeTagFilters.size > 0
+                  ? `Open sort and filters, ${activeTagFilters.size} active`
+                  : "Open sort and filters"
+              }
+              className="cp-mobile-filter-button"
+              onClick={() => setIsMobileFilterDrawerOpen(true)}
+              type="button"
+            >
+              <FunnelSimple size={18} weight="bold" />
+              {activeTagFilters.size > 0 ? (
+                <span className="cp-mobile-filter-button__badge">{activeTagFilters.size}</span>
+              ) : null}
+            </button>
 
             <div className="cp-board__browse-actions">
               <label className="cp-sort-select">
@@ -714,6 +736,90 @@ export function RecipesPage({
             router.push(`/recipes/${recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1`);
           }}
         />
+      ) : null}
+      {isMobileFilterDrawerOpen ? (
+        <ModalShell
+          aria-labelledby="mobile-filter-drawer-title"
+          onClose={() => setIsMobileFilterDrawerOpen(false)}
+          variant="filters"
+        >
+          <div className="cp-filter-drawer">
+            <div className="cp-filter-drawer__header">
+              <div>
+                <h2 id="mobile-filter-drawer-title">Sort and filter</h2>
+                <p>Choose how recipes are ordered and narrow the grid by tag.</p>
+              </div>
+              <button
+                aria-label="Close sort and filters"
+                className="cp-filter-drawer__close"
+                onClick={() => setIsMobileFilterDrawerOpen(false)}
+                type="button"
+              >
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+
+            <label className="cp-filter-drawer__field">
+              <span>Sort</span>
+              <div className="cp-sort-select cp-sort-select--drawer">
+                <div className="cp-sort-select__control">
+                  <SortAscending className="cp-sort-select__icon" size={16} weight="bold" />
+                  <select
+                    aria-label="Sort recipes"
+                    onChange={(event) => setSortOption(event.target.value as RecipeSortOption)}
+                    value={sortOption}
+                  >
+                    {RECIPE_SORT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <CaretDown className="cp-sort-select__caret" size={14} weight="bold" />
+                </div>
+              </div>
+            </label>
+
+            {allKnownTags.length > 0 ? (
+              <section className="cp-filter-drawer__section" aria-labelledby="mobile-filter-tags-title">
+                <div className="cp-filter-drawer__section-header">
+                  <h3 id="mobile-filter-tags-title">Tags</h3>
+                  {activeTagFilters.size > 0 ? (
+                    <button onClick={clearTagFilters} type="button">
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                <div className="cp-filter-drawer__tags">
+                  {allKnownTags.map((tag) => {
+                    const isActive = activeTagFilters.has(tag);
+
+                    return (
+                      <button
+                        aria-pressed={isActive}
+                        className={`cp-filter-tag ${isActive ? "is-active" : ""}`.trim()}
+                        key={tag}
+                        onClick={() => toggleTagFilter(tag)}
+                        type="button"
+                      >
+                        <TagIconGlyph tag={tag} />
+                        <span>{tag}</span>
+                        {isActive ? (
+                          <X
+                            aria-hidden="true"
+                            className="cp-filter-tag__remove"
+                            size={13}
+                            weight="bold"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+          </div>
+        </ModalShell>
       ) : null}
       {isAuthOpen || (isImportOpen && importRequiresAuth) ? (
         <AuthDialog
