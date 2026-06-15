@@ -824,8 +824,20 @@ ol {
 .cp-board {
   display: flex;
   flex-direction: column;
-  gap: var(--cp-space-4);
+  gap: 0;
   min-height: calc(100vh - 130px);
+}
+
+.cp-board > * + * {
+  margin-top: var(--cp-space-4);
+}
+
+.cp-board > .cp-board__sticky-controls {
+  margin-top: 0;
+}
+
+.cp-board__sticky-controls + .cp-recipe-grid {
+  margin-top: 4px;
 }
 
 .cp-board__upgrade {
@@ -1007,7 +1019,7 @@ ol {
   gap: 12px;
   flex: 0 1 440px;
   width: min(100%, 440px);
-  min-height: 52px;
+  min-height: 48px;
   padding: 0 16px;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
@@ -1056,7 +1068,6 @@ ol {
 .cp-sort-select {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
   width: fit-content;
 }
 
@@ -1064,29 +1075,45 @@ ol {
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 42px;
-  padding-right: 14px;
+  min-height: 48px;
+  padding: 0 40px 0 0;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
-  background: var(--cp-card);
+  background: color-mix(in srgb, var(--cp-card) 82%, var(--cp-page));
   box-shadow: var(--cp-shadow-soft);
   color: var(--cp-ink);
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.cp-sort-select__control:focus-within {
+  border-color: rgba(0, 155, 250, 0.45);
+  background: var(--cp-card);
+  box-shadow: 0 0 0 4px rgba(0, 155, 250, 0.08);
+}
+
+.cp-sort-select__icon {
+  position: absolute;
+  left: 16px;
+  color: var(--cp-ink-soft);
+  pointer-events: none;
 }
 
 .cp-sort-select__control select {
   appearance: none;
-  min-height: 42px;
-  padding: 0 34px 0 16px;
+  min-height: 46px;
+  padding: 0 0 0 42px;
   border: 0;
   outline: 0;
   background: transparent;
   color: inherit;
-  font-weight: 700;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
 }
 
-.cp-sort-select__control svg {
+.cp-sort-select__caret {
   position: absolute;
-  right: 14px;
+  right: 16px;
   pointer-events: none;
   color: var(--cp-ink-soft);
 }
@@ -1381,6 +1408,10 @@ html[data-theme="dark"] .cp-filter-tag.is-active {
   display: flex;
   column-gap: 22px;
   align-items: flex-start;
+}
+
+.cp-recipe-grid .cp-recipe-card:first-child {
+  margin-top: 0;
 }
 
 .cp-recipe-column {
@@ -1821,6 +1852,16 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+  gap: 0;
+}
+
+.cp-detail--page > * + * {
+  margin-top: var(--cp-space-6);
+}
+
+.cp-detail--page > .cp-detail__topbar,
+.cp-detail--page > .cp-detail__hero {
+  margin-top: 0;
 }
 
 .cp-app-shell:has(.cp-detail--page) {
@@ -1916,12 +1957,21 @@ html[data-theme="dark"] .cp-detail--page {
 }
 
 .cp-detail__hero {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 620px);
+  grid-template-columns: minmax(360px, 620px) minmax(420px, 620px);
   gap: clamp(48px, 4vw, 64px);
   align-items: center;
-  width: min(100%, 1480px);
+  justify-content: space-between;
+  width: 100%;
   margin: 0 auto;
+  padding: clamp(28px, 3vw, 44px);
+  border: 1px solid var(--cp-line);
+  border-radius: 28px;
+  background: transparent;
+  box-shadow:
+    0 5px 12px rgba(23, 32, 56, 0.024),
+    0 1px 3px rgba(23, 32, 56, 0.018);
 }
 
 .cp-detail__hero-copy {
@@ -1980,6 +2030,17 @@ html[data-theme="dark"] .cp-detail--page {
   letter-spacing: 0;
   transform: rotate(-1.2deg);
   white-space: nowrap;
+}
+
+button.cp-detail__tape-chip {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+}
+
+button.cp-detail__tape-chip:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .cp-detail__tape-chip:nth-child(even) {
@@ -2404,8 +2465,8 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
 .cp-detail--page .cp-panel--section {
   background: transparent;
   box-shadow:
-    0 8px 18px rgba(23, 32, 56, 0.032),
-    0 1px 4px rgba(23, 32, 56, 0.022);
+    0 5px 12px rgba(23, 32, 56, 0.024),
+    0 1px 3px rgba(23, 32, 56, 0.018);
 }
 
 /* Edit-mode sections: outlined cards, no solid white fill in light mode */
@@ -2418,8 +2479,8 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   border-radius: 28px;
   background: transparent;
   box-shadow:
-    0 8px 18px rgba(23, 32, 56, 0.032),
-    0 1px 4px rgba(23, 32, 56, 0.022);
+    0 5px 12px rgba(23, 32, 56, 0.024),
+    0 1px 3px rgba(23, 32, 56, 0.018);
 }
 
 .cp-detail__section-card--tags {
@@ -2884,6 +2945,50 @@ html[data-theme="dark"] .cp-time-picker__select-wrap {
 }
 
 .cp-delete-confirm__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cp-space-3);
+}
+
+.cp-quick-time-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-5);
+}
+
+.cp-quick-time-dialog__header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: var(--cp-space-3);
+}
+
+.cp-quick-time-dialog__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 12%, var(--cp-card));
+  color: color-mix(in srgb, var(--recipe-current-accent, var(--cp-blue)) 62%, var(--cp-ink));
+}
+
+.cp-quick-time-dialog h2 {
+  margin: 0 0 4px;
+  color: var(--cp-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.cp-quick-time-dialog p {
+  margin: 0;
+  color: var(--cp-ink-soft);
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+
+.cp-quick-time-dialog__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -3516,17 +3621,26 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   padding: 0 14px;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
-  background: rgba(127, 127, 127, 0.08);
+  background: #fff;
   color: var(--cp-ink);
   cursor: pointer;
   font-weight: 700;
 }
 
 .cp-import-mode-toggle__item.is-active {
-  background: color-mix(in srgb, var(--cp-ink-soft) 18%, var(--cp-card));
+  background: #eef1f4;
   color: var(--cp-ink);
-  border-color: transparent;
+  border-color: #d8dde3;
   box-shadow: 0 1px 3px rgba(31, 38, 54, 0.08);
+}
+
+html[data-theme="dark"] .cp-import-mode-toggle__item {
+  background: var(--cp-card);
+}
+
+html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
+  background: color-mix(in srgb, var(--cp-card) 82%, white);
+  border-color: color-mix(in srgb, var(--cp-line) 72%, white);
 }
 
 .cp-import-mode-toggle__item:disabled {
@@ -3794,6 +3908,7 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
     display: flex;
     flex-direction: column;
     gap: var(--cp-space-5);
+    padding: var(--cp-space-5);
   }
 
   .cp-detail__hero-copy {
@@ -3836,6 +3951,7 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
     display: flex;
     flex-direction: column;
     gap: var(--cp-space-5);
+    padding: var(--cp-space-5);
   }
 
   .cp-detail__hero-copy {
@@ -3888,7 +4004,11 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   }
 
   .cp-board {
-    gap: var(--cp-space-4);
+    gap: 0;
+  }
+
+  .cp-board > * + * {
+    margin-top: var(--cp-space-4);
   }
 
   .cp-board__sticky-controls {
@@ -4053,8 +4173,17 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   }
 
   .cp-detail.cp-detail--page {
-    gap: var(--cp-space-4);
+    gap: 0;
     padding: var(--cp-space-3) var(--cp-space-4) var(--cp-space-5);
+  }
+
+  .cp-detail--page > * + * {
+    margin-top: var(--cp-space-4);
+  }
+
+  .cp-detail--page > .cp-detail__topbar,
+  .cp-detail--page > .cp-detail__hero {
+    margin-top: 0;
   }
 
   .cp-detail__section-card {
@@ -4062,7 +4191,11 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   }
 
   .cp-board {
-    gap: var(--cp-space-3);
+    gap: 0;
+  }
+
+  .cp-board > * + * {
+    margin-top: var(--cp-space-3);
   }
 
   .cp-shell {
@@ -4152,6 +4285,11 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   .cp-sort-select__control {
     flex: 1;
     min-width: 0;
+    min-height: 44px;
+  }
+
+  .cp-sort-select__control select {
+    min-height: 42px;
   }
 
 }

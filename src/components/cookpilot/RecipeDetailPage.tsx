@@ -319,7 +319,7 @@ function generateShareableText(recipe: RecipeData, sourceURL?: string | null) {
 
   if (instructions.length > 0) {
     sections.push(
-      `INSTRUCTIONS:\n${instructions
+      `STEPS:\n${instructions
         .map((instruction, index) => `${index + 1}. ${instruction.text}`)
         .join("\n\n")}`,
     );
@@ -524,6 +524,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const [allKnownTags, setAllKnownTags] = useState<string[]>([]);
   const [saveEditError, setSaveEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [quickTimeField, setQuickTimeField] = useState<"prep" | "cook" | null>(null);
+  const [quickTimeValue, setQuickTimeValue] = useState<string | null>(null);
+  const [savingQuickTime, setSavingQuickTime] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [usageInfo, setUsageInfo] = useState<UsageInfo | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -1097,6 +1100,53 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     }
   }
 
+  function openQuickTimeEditor(field: "prep" | "cook") {
+    setQuickTimeField(field);
+    setQuickTimeValue(
+      field === "prep"
+        ? selectedRecipe?.recipe.prepTime ?? null
+        : selectedRecipe?.recipe.cookTime ?? null,
+    );
+    setSaveEditError(null);
+  }
+
+  function closeQuickTimeEditor() {
+    setQuickTimeField(null);
+    setQuickTimeValue(null);
+  }
+
+  async function handleSaveQuickTime() {
+    if (!user || !selectedRecipe || !quickTimeField || !quickTimeValue) return;
+
+    setSavingQuickTime(true);
+    setSaveEditError(null);
+
+    try {
+      const updatedRecipe = buildSavedRecipe({
+        id: selectedRecipe.id,
+        recipe: {
+          ...selectedRecipe.recipe,
+          prepTime: quickTimeField === "prep" ? quickTimeValue : selectedRecipe.recipe.prepTime,
+          cookTime: quickTimeField === "cook" ? quickTimeValue : selectedRecipe.recipe.cookTime,
+        },
+        sourceURL: selectedRecipe.sourceURL,
+        createdAt: selectedRecipe.createdAt,
+        preferredServings: selectedRecipe.preferredServings,
+        checkedIngredientIndices,
+        preferredIngredientMeasurementRaw: selectedRecipe.preferredIngredientMeasurementRaw,
+        themeSeedColors: selectedRecipe.themeSeedColors,
+      });
+
+      await persistRecipe(user.uid, updatedRecipe);
+      closeQuickTimeEditor();
+    } catch (error) {
+      console.error(error);
+      setSaveEditError("We couldn’t save that time. Please try again.");
+    } finally {
+      setSavingQuickTime(false);
+    }
+  }
+
   function updateDraftRecipe(updater: (recipe: RecipeData) => RecipeData) {
     setEditDraft((current) => current ? { ...current, recipe: updater(current.recipe) } : current);
   }
@@ -1618,22 +1668,42 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             </a>
               ) : null}
 
-              {(selectedRecipe.recipe.prepTime || selectedRecipe.recipe.cookTime) ? (
-            <div className="cp-detail__tape-chips">
-              {selectedRecipe.recipe.prepTime ? (
-                <span className="cp-detail__tape-chip">
-                  <Timer size={13} weight="bold" />
-                  {selectedRecipe.recipe.prepTime} prep
-                </span>
-              ) : null}
-              {selectedRecipe.recipe.cookTime ? (
-                <span className="cp-detail__tape-chip">
-                  <Fire size={13} weight="bold" />
-                  {selectedRecipe.recipe.cookTime} cook
-                </span>
-              ) : null}
-            </div>
-              ) : null}
+              <div className="cp-detail__tape-chips">
+                {selectedRecipe.recipe.prepTime ? (
+                  <span className="cp-detail__tape-chip">
+                    <Timer size={13} weight="bold" />
+                    {selectedRecipe.recipe.prepTime} prep
+                  </span>
+                ) : (
+                  <button
+                    aria-label="Add prep time"
+                    className="cp-detail__tape-chip"
+                    disabled={!user || savingQuickTime}
+                    onClick={() => openQuickTimeEditor("prep")}
+                    type="button"
+                  >
+                    <Plus size={13} weight="bold" />
+                    Add prep
+                  </button>
+                )}
+                {selectedRecipe.recipe.cookTime ? (
+                  <span className="cp-detail__tape-chip">
+                    <Fire size={13} weight="bold" />
+                    {selectedRecipe.recipe.cookTime} cook
+                  </span>
+                ) : (
+                  <button
+                    aria-label="Add cook time"
+                    className="cp-detail__tape-chip"
+                    disabled={!user || savingQuickTime}
+                    onClick={() => openQuickTimeEditor("cook")}
+                    type="button"
+                  >
+                    <Plus size={13} weight="bold" />
+                    Add cook
+                  </button>
+                )}
+              </div>
 
               {recipeTags.length > 0 ? (
             <div className="cp-detail__tags">
@@ -1954,7 +2024,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           />
         ) : null}
 
-        <DetailSection bare={isEditingRecipe} title="Instructions">
+        <DetailSection bare={isEditingRecipe} title="Steps">
           {isEditingRecipe ? (
             <DndContext
               sensors={instructionDragSensors}
@@ -2044,6 +2114,66 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             Delete recipe
           </Button>
         </section>
+      ) : null}
+
+      {quickTimeField ? (
+        <ModalShell
+          aria-labelledby="quick-time-dialog-title"
+          onClose={savingQuickTime ? () => {} : closeQuickTimeEditor}
+          variant="confirm"
+        >
+          <form
+            className="cp-quick-time-dialog"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSaveQuickTime();
+            }}
+          >
+            <div className="cp-quick-time-dialog__header">
+              <div className="cp-quick-time-dialog__icon" aria-hidden="true">
+                {quickTimeField === "prep" ? (
+                  <Timer size={18} weight="bold" />
+                ) : (
+                  <Fire size={18} weight="bold" />
+                )}
+              </div>
+              <div>
+                <h2 id="quick-time-dialog-title">
+                  Add {quickTimeField === "prep" ? "prep" : "cook"} time
+                </h2>
+                <p>
+                  Set the {quickTimeField === "prep" ? "prep" : "cook"} time for this recipe.
+                </p>
+              </div>
+            </div>
+            <TimePickerField
+              label={quickTimeField === "prep" ? "Prep time" : "Cook time"}
+              value={quickTimeValue}
+              onChange={setQuickTimeValue}
+            />
+            <div className="cp-quick-time-dialog__actions">
+              <Button
+                data-autofocus="true"
+                disabled={savingQuickTime}
+                onClick={closeQuickTimeEditor}
+                size="compact"
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="cp-button--save"
+                disabled={!quickTimeValue || savingQuickTime}
+                size="compact"
+                type="submit"
+                variant="secondary"
+              >
+                {savingQuickTime ? <ArrowClockwise className="cp-spin" size={16} /> : <Check size={16} />}
+                Save
+              </Button>
+            </div>
+          </form>
+        </ModalShell>
       ) : null}
 
       {showDeleteConfirm ? (
