@@ -583,6 +583,7 @@ export function RecipesPage({
             <div className="cp-board__browse-actions">
               <label className="cp-sort-select">
                 <div className="cp-sort-select__control">
+                  <span className="cp-sort-select__label">Sort</span>
                   <select
                     aria-label="Sort recipes"
                     onChange={(event) => setSortOption(event.target.value as RecipeSortOption)}

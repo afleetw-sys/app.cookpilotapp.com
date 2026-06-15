@@ -1007,7 +1007,7 @@ ol {
   gap: 12px;
   flex: 0 1 440px;
   width: min(100%, 440px);
-  min-height: 52px;
+  min-height: 48px;
   padding: 0 16px;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
@@ -1056,7 +1056,6 @@ ol {
 .cp-sort-select {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
   width: fit-content;
 }
 
@@ -1064,29 +1063,46 @@ ol {
   position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 42px;
-  padding-right: 14px;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 40px 0 14px;
   border: 1px solid var(--cp-line);
   border-radius: 12px;
-  background: var(--cp-card);
+  background: color-mix(in srgb, var(--cp-card) 82%, var(--cp-page));
   box-shadow: var(--cp-shadow-soft);
   color: var(--cp-ink);
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.cp-sort-select__control:focus-within {
+  border-color: rgba(0, 155, 250, 0.45);
+  background: var(--cp-card);
+  box-shadow: 0 0 0 4px rgba(0, 155, 250, 0.08);
+}
+
+.cp-sort-select__label {
+  color: var(--cp-ink-soft);
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .cp-sort-select__control select {
   appearance: none;
-  min-height: 42px;
-  padding: 0 34px 0 16px;
+  min-height: 46px;
+  padding: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: inherit;
-  font-weight: 700;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
 }
 
 .cp-sort-select__control svg {
   position: absolute;
-  right: 14px;
+  right: 16px;
   pointer-events: none;
   color: var(--cp-ink-soft);
 }
@@ -4163,6 +4179,11 @@ html[data-theme="dark"] .cp-measurement-dialog__option.is-selected {
   .cp-sort-select__control {
     flex: 1;
     min-width: 0;
+    min-height: 44px;
+  }
+
+  .cp-sort-select__control select {
+    min-height: 42px;
   }
 
 }
