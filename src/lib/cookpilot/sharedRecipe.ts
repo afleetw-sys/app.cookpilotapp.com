@@ -111,7 +111,7 @@ export function buildShareLinkPayload(recipe: RecipeData, sourceURL?: string | n
   };
 
   if (ingredientCount(payload.recipe) === 0 || instructionCount(payload.recipe) === 0) {
-    throw new Error("Recipe must include ingredients and instructions before sharing.");
+    throw new Error("Recipe must include ingredients and steps before sharing.");
   }
 
   return payload;

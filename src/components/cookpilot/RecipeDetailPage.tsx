@@ -319,7 +319,7 @@ function generateShareableText(recipe: RecipeData, sourceURL?: string | null) {
 
   if (instructions.length > 0) {
     sections.push(
-      `INSTRUCTIONS:\n${instructions
+      `STEPS:\n${instructions
         .map((instruction, index) => `${index + 1}. ${instruction.text}`)
         .join("\n\n")}`,
     );
@@ -1954,7 +1954,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           />
         ) : null}
 
-        <DetailSection bare={isEditingRecipe} title="Instructions">
+        <DetailSection bare={isEditingRecipe} title="Steps">
           {isEditingRecipe ? (
             <DndContext
               sensors={instructionDragSensors}

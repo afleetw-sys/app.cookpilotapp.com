@@ -1921,7 +1921,7 @@ html[data-theme="dark"] .cp-detail--page {
   grid-template-columns: minmax(360px, 620px) minmax(420px, 620px);
   gap: clamp(48px, 4vw, 64px);
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   width: 100%;
   margin: 0 auto;
   padding: clamp(24px, 3vw, 40px);
