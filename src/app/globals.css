@@ -836,6 +836,10 @@ ol {
   margin-top: 0;
 }
 
+.cp-board__sticky-controls + .cp-recipe-grid {
+  margin-top: 4px;
+}
+
 .cp-board__upgrade {
   max-width: 540px;
 }
@@ -1404,6 +1408,10 @@ html[data-theme="dark"] .cp-filter-tag.is-active {
   display: flex;
   column-gap: 22px;
   align-items: flex-start;
+}
+
+.cp-recipe-grid .cp-recipe-card:first-child {
+  margin-top: 0;
 }
 
 .cp-recipe-column {
