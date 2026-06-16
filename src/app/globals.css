@@ -676,6 +676,7 @@ ol {
 .cp-topbar__action:focus-visible,
 .cp-filter-menu__button:focus-visible,
 .cp-filter-chip:focus-visible,
+.cp-mobile-filter-button:focus-visible,
 .cp-import-mode-toggle__item:focus-visible,
 .cp-appearance-toggle__item:focus-visible,
 .cp-settings-row:focus-visible,
@@ -970,6 +971,38 @@ ol {
   min-width: 0;
 }
 
+.cp-mobile-filter-button {
+  position: relative;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--cp-line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cp-card) 82%, var(--cp-page));
+  color: var(--cp-ink-soft);
+  cursor: pointer;
+}
+
+.cp-mobile-filter-button__badge {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--cp-ink);
+  color: var(--cp-card);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .cp-board__count {
   margin-right: auto;
   color: color-mix(in srgb, var(--cp-ink-soft) 78%, transparent);
@@ -1071,6 +1104,14 @@ ol {
   width: fit-content;
 }
 
+.cp-sort-select--drawer {
+  width: 100%;
+}
+
+.cp-sort-select--drawer .cp-sort-select__control {
+  width: 100%;
+}
+
 .cp-sort-select__control {
   position: relative;
   display: inline-flex;
@@ -1108,7 +1149,7 @@ ol {
   color: inherit;
   font: inherit;
   font-size: 0.9rem;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .cp-sort-select__caret {
@@ -1423,7 +1464,7 @@ html[data-theme="dark"] .cp-filter-tag.is-active {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   min-height: 0;
   margin: 12px 0 20px;
@@ -1505,7 +1546,7 @@ a.cp-recipe-card {
 .cp-recipe-card__body {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 6px;
   padding: 2px 4px 0;
 }
 
@@ -1519,7 +1560,7 @@ a.cp-recipe-card {
 .cp-recipe-card__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   color: var(--cp-ink-soft);
   font-size: 0.82rem;
 }
@@ -1977,7 +2018,7 @@ html[data-theme="dark"] .cp-detail--page {
 .cp-detail__hero-copy {
   display: flex;
   flex-direction: column;
-  gap: var(--cp-space-4);
+  gap: calc(var(--cp-space-4) + 2px);
   width: 100%;
   max-width: 620px;
 }
@@ -2009,8 +2050,8 @@ html[data-theme="dark"] .cp-detail--page {
 .cp-detail__tape-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 10px;
+  gap: 12px;
+  padding-top: 12px;
   width: 100%;
 }
 
@@ -2055,8 +2096,8 @@ html[data-theme="dark"] .cp-detail__tape-chip {
 .cp-detail__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 2px;
+  gap: 12px;
+  padding-top: 4px;
 }
 
 .cp-detail__tag {
@@ -3480,6 +3521,108 @@ html[data-theme="dark"] .cp-ai-usage-banner {
   box-shadow: var(--cp-shadow);
 }
 
+.cp-modal-card--filters {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: min(82vh, 620px);
+  padding: var(--cp-space-5);
+  border: 1px solid var(--cp-line);
+  border-bottom: 0;
+  border-radius: 24px 24px 0 0;
+  background: var(--cp-card);
+  box-shadow: 0 -14px 34px rgba(31, 38, 54, 0.16);
+}
+
+.cp-filter-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-5);
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.cp-filter-drawer__header,
+.cp-filter-drawer__section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--cp-space-3);
+}
+
+.cp-filter-drawer__header h2 {
+  margin: 0 0 4px;
+  color: var(--cp-ink);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.cp-filter-drawer__header p {
+  margin: 0;
+  color: var(--cp-ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.cp-filter-drawer__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(127, 127, 127, 0.08);
+  color: var(--cp-ink-soft);
+  cursor: pointer;
+}
+
+.cp-filter-drawer__field,
+.cp-filter-drawer__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-space-3);
+}
+
+.cp-filter-drawer__field > span,
+.cp-filter-drawer__section-header h3 {
+  color: var(--cp-ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.cp-filter-drawer__section-header button {
+  border: 0;
+  background: transparent;
+  color: var(--cp-ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.cp-filter-drawer__tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.cp-filter-drawer__tags .cp-filter-tag {
+  transform: none;
+}
+
+.cp-filter-drawer__tags .cp-filter-tag:hover {
+  transform: translateY(-1px);
+}
+
 .cp-modal-card--measurements {
   position: relative;
   display: flex;
@@ -4046,15 +4189,17 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   }
 
   .cp-board__search-row {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    gap: var(--cp-space-2);
   }
 
   .cp-board__browse-actions {
-    align-items: stretch;
-    flex-direction: column;
-    margin-left: 0;
-    width: 100%;
+    display: none;
+  }
+
+  .cp-mobile-filter-button {
+    display: inline-flex;
   }
 
   .cp-board__title-row {
@@ -4160,9 +4305,9 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   }
 
   .cp-detail--page .cp-panel--section {
-    padding: var(--cp-space-5);
-    border: 1px solid var(--cp-line);
-    border-radius: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
     background: transparent;
     box-shadow: none;
   }
@@ -4175,6 +4320,13 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   .cp-detail.cp-detail--page {
     gap: 0;
     padding: var(--cp-space-3) var(--cp-space-4) var(--cp-space-5);
+  }
+
+  .cp-detail__hero {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .cp-detail--page > * + * {
