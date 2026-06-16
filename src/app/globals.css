@@ -4216,20 +4216,14 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   }
 
   .cp-board__title-row {
-    display: grid;
-    grid-template-columns: minmax(44px, 1fr) auto minmax(44px, 1fr);
+    display: flex;
+    flex-direction: row;
     align-items: center;
+    justify-content: space-between;
     gap: var(--cp-space-3);
   }
 
-  .cp-board__title {
-    grid-column: 2;
-    justify-self: center;
-  }
-
   .cp-board__title-row .cp-board__new-recipe {
-    grid-column: 3;
-    justify-self: end;
     width: auto;
     flex-shrink: 0;
   }
