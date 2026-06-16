@@ -288,6 +288,27 @@ export async function loadRecipePage(
   return { recipes, nextCursor, totalCount: countSnapshot?.data().count ?? null };
 }
 
+export async function loadAllRecipeTags(userId: string): Promise<string[]> {
+  const snapshot = await getDocs(recipesCollection(userId));
+  const tags = new Set<string>();
+
+  snapshot.docs.forEach((recipeSnapshot) => {
+    const data = recipeSnapshot.data();
+    const recipeTags = Array.isArray(data.tags) ? data.tags : [];
+    const systemTags = Array.isArray(data.systemTags) ? data.systemTags : [];
+
+    [...recipeTags, ...systemTags].forEach((tag) => {
+      if (typeof tag !== "string") return;
+      const trimmed = tag.trim();
+      if (trimmed.length > 0) {
+        tags.add(trimmed);
+      }
+    });
+  });
+
+  return Array.from(tags).sort((a, b) => a.localeCompare(b));
+}
+
 function assembleSavedRecipe(
   recipeId: string,
   summarySnap: QueryDocumentSnapshot<DocumentData>,

@@ -42,7 +42,7 @@ import { TagIconGlyph } from "@/components/ui/TagIconGlyph";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StateBlock } from "@/components/ui/StateBlock";
-import { loadRecipePage } from "@/lib/cookpilot/firestore";
+import { loadAllRecipeTags, loadRecipePage } from "@/lib/cookpilot/firestore";
 import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
 import { consumeRecipeDeletedToast } from "@/lib/cookpilot/recipeDeletedToast";
@@ -155,6 +155,9 @@ export function RecipesPage({
   const [recipes, setRecipes] = useState<RecipeSummary[]>(
     () => initialSessionCache?.recipes ?? [],
   );
+  const [allKnownTags, setAllKnownTags] = useState<string[]>(
+    () => knownTagsFromRecipes(initialSessionCache?.recipes ?? []),
+  );
   const [loadingRecipes, setLoadingRecipes] = useState(
     () => !initialSessionCache,
   );
@@ -194,6 +197,7 @@ export function RecipesPage({
   const [isStickyControlsStuck, setIsStickyControlsStuck] = useState(false);
   const [showRecipeDeletedToast, setShowRecipeDeletedToast] = useState(false);
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const userIdForTags = user?.uid;
   const anonymousRecipeCount = Math.max(totalRecipeCount, recipes.length);
   const importRequiresAuth =
     status === "anonymous" && anonymousRecipeCount >= MAX_ANONYMOUS_RECIPES;
@@ -310,6 +314,7 @@ export function RecipesPage({
   useEffect(() => {
     if (status === "signedOut") {
       setRecipes([]);
+      setAllKnownTags([]);
       setNextCursor(null);
       setTotalRecipeCount(0);
       setLoadingRecipes(false);
@@ -375,6 +380,34 @@ export function RecipesPage({
   }, [user]);
 
   useEffect(() => {
+    const loadedTags = knownTagsFromRecipes(recipes);
+    if (loadedTags.length === 0) return;
+
+    setAllKnownTags((current) =>
+      Array.from(new Set([...current, ...loadedTags])).sort((a, b) => a.localeCompare(b)),
+    );
+  }, [recipes]);
+
+  useEffect(() => {
+    if (!userIdForTags || status === "loading" || status === "signedOut") return;
+    let cancelled = false;
+
+    void loadAllRecipeTags(userIdForTags)
+      .then((tags) => {
+        if (!cancelled) {
+          setAllKnownTags(tags);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, userIdForTags]);
+
+  useEffect(() => {
     if (!user || recipes.length === 0) return;
     const userId = user.uid;
 
@@ -430,8 +463,6 @@ export function RecipesPage({
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [loadingRecipes, nextCursor, user]);
-
-  const allKnownTags = useMemo(() => knownTagsFromRecipes(recipes), [recipes]);
 
   useLayoutEffect(() => {
     const scroller = tagScrollerRef.current;
