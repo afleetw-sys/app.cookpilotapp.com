@@ -866,6 +866,11 @@ ol {
   transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.cp-board__sticky-controls > * {
+  position: relative;
+  z-index: 1;
+}
+
 .cp-board__sticky-controls.is-stuck {
   background: color-mix(in srgb, var(--cp-page) 92%, transparent);
   border-bottom-color: color-mix(in srgb, var(--cp-line) 64%, transparent);
@@ -1961,6 +1966,11 @@ html[data-theme="dark"] .cp-detail--page {
   background: transparent;
   border-bottom: 1px solid transparent;
   transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.cp-detail__topbar > * {
+  position: relative;
+  z-index: 1;
 }
 
 .cp-detail__topbar.is-stuck {
@@ -4163,11 +4173,30 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   }
 
   .cp-board__sticky-controls.is-stuck {
-    background: color-mix(in srgb, var(--cp-page) 96%, white);
-    border-bottom-color: color-mix(in srgb, var(--cp-line) 72%, transparent);
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
-  html[data-theme="dark"] .cp-board__sticky-controls.is-stuck {
+  .cp-board__sticky-controls.is-stuck::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    z-index: 0;
+    width: 100vw;
+    border-bottom: 1px solid color-mix(in srgb, var(--cp-line) 72%, transparent);
+    background: color-mix(in srgb, var(--cp-page) 96%, white);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    pointer-events: none;
+    transform: translateX(-50%);
+    backdrop-filter: blur(28px) saturate(1.35);
+    -webkit-backdrop-filter: blur(28px) saturate(1.35);
+  }
+
+  html[data-theme="dark"] .cp-board__sticky-controls.is-stuck::before {
     background: color-mix(in srgb, var(--cp-page) 94%, black);
   }
 
@@ -4423,7 +4452,31 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   .cp-detail__topbar {
     align-items: center;
     margin: 0;
-    padding: var(--cp-space-3) var(--cp-space-4);
+    padding: var(--cp-space-3) 0;
+  }
+
+  .cp-detail__topbar.is-stuck {
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .cp-detail__topbar.is-stuck::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 50%;
+    z-index: 0;
+    width: 100vw;
+    border-bottom: 1px solid color-mix(in srgb, var(--cp-line) 64%, transparent);
+    background: color-mix(in srgb, var(--recipe-current-bg, var(--cp-surface)) 92%, transparent);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
+    pointer-events: none;
+    transform: translateX(-50%);
+    backdrop-filter: blur(28px) saturate(1.35);
+    -webkit-backdrop-filter: blur(28px) saturate(1.35);
   }
 
   .cp-detail__topbar-actions {
