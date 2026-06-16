@@ -111,7 +111,6 @@ body {
   background: var(--cp-current-page-background);
   margin: 0;
   min-height: 100%;
-  overflow-x: hidden;
   width: 100%;
 }
 
@@ -4159,7 +4158,7 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
 
   .cp-board__sticky-controls {
     gap: var(--cp-space-3);
-    margin: 0 calc(var(--cp-space-4) * -1);
+    margin: 0;
     padding: var(--cp-space-3) var(--cp-space-4);
   }
 
@@ -4423,7 +4422,7 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
 
   .cp-detail__topbar {
     align-items: center;
-    margin: 0 calc(var(--cp-space-4) * -1);
+    margin: 0;
     padding: var(--cp-space-3) var(--cp-space-4);
   }
 
