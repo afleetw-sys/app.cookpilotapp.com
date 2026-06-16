@@ -282,6 +282,11 @@ export function RecipesPage({
   useEffect(() => {
     const sentinel = stickyControlsSentinelRef.current;
     if (!sentinel) return;
+    const observedSentinel = sentinel;
+
+    function updateStickyState() {
+      setIsStickyControlsStuck(observedSentinel.getBoundingClientRect().bottom <= 0);
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -290,8 +295,16 @@ export function RecipesPage({
       { threshold: 0 },
     );
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    observer.observe(observedSentinel);
+    updateStickyState();
+    window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("resize", updateStickyState, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateStickyState);
+      window.removeEventListener("resize", updateStickyState);
+    };
   }, []);
 
   useEffect(() => {
