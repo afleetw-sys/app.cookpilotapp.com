@@ -111,6 +111,8 @@ body {
   background: var(--cp-current-page-background);
   margin: 0;
   min-height: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
 }
 
@@ -167,6 +169,7 @@ html[data-theme="dark"]:has(.cp-detail--page) {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -4107,6 +4110,20 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
 }
 
 @media (max-width: 720px) {
+  input,
+  select,
+  textarea,
+  .cp-field__control,
+  .cp-searchbar input,
+  .cp-sort-select__control select,
+  .cp-tag-combobox__text-input,
+  .cp-servings-control__input,
+  .cp-edit-row__input,
+  .cp-time-picker__select,
+  .cp-ai-edit-form__input {
+    font-size: 16px;
+  }
+
   .cp-app-shell {
     padding: 0;
   }
@@ -4188,7 +4205,6 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
     height: 100%;
     padding: 0;
     line-height: 1.25;
-    font-size: 16px;
     -webkit-appearance: none;
     appearance: none;
   }
