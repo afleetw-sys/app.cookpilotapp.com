@@ -1,15 +1,12 @@
 "use client";
 
-import { ArrowUpRight, LinkSimple, Sparkle, X } from "@phosphor-icons/react";
+import { ArrowUpRight, LinkSimple, Sparkle } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useAppearance, type AppearanceMode } from "@/components/providers/AppearanceProvider";
-import { Button } from "@/components/ui/Button";
 
 export function SettingsPanel({
-  onClose,
   titleId,
 }: {
-  onClose?: () => void;
   titleId?: string;
 }) {
   const { appearanceMode, setAppearanceMode } = useAppearance();
@@ -51,17 +48,6 @@ export function SettingsPanel({
     <section className="cp-settings-card cp-page-card">
       <div className="cp-settings-card__header">
         <h2 id={titleId}>Settings</h2>
-        {onClose ? (
-          <Button
-            aria-label="Close settings"
-            className="cp-settings-card__close"
-            onClick={onClose}
-            size="compact"
-            variant="icon"
-          >
-            <X size={18} />
-          </Button>
-        ) : null}
       </div>
 
       <div className="cp-settings-card__section">

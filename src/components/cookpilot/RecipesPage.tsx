@@ -42,7 +42,7 @@ import { TagIconGlyph } from "@/components/ui/TagIconGlyph";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StateBlock } from "@/components/ui/StateBlock";
-import { loadRecipePage } from "@/lib/cookpilot/firestore";
+import { loadAllRecipeTags, loadRecipePage } from "@/lib/cookpilot/firestore";
 import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
 import { consumeRecipeDeletedToast } from "@/lib/cookpilot/recipeDeletedToast";
@@ -155,6 +155,9 @@ export function RecipesPage({
   const [recipes, setRecipes] = useState<RecipeSummary[]>(
     () => initialSessionCache?.recipes ?? [],
   );
+  const [allKnownTags, setAllKnownTags] = useState<string[]>(
+    () => knownTagsFromRecipes(initialSessionCache?.recipes ?? []),
+  );
   const [loadingRecipes, setLoadingRecipes] = useState(
     () => !initialSessionCache,
   );
@@ -194,6 +197,7 @@ export function RecipesPage({
   const [isStickyControlsStuck, setIsStickyControlsStuck] = useState(false);
   const [showRecipeDeletedToast, setShowRecipeDeletedToast] = useState(false);
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const userIdForTags = user?.uid;
   const anonymousRecipeCount = Math.max(totalRecipeCount, recipes.length);
   const importRequiresAuth =
     status === "anonymous" && anonymousRecipeCount >= MAX_ANONYMOUS_RECIPES;
@@ -282,6 +286,11 @@ export function RecipesPage({
   useEffect(() => {
     const sentinel = stickyControlsSentinelRef.current;
     if (!sentinel) return;
+    const observedSentinel = sentinel;
+
+    function updateStickyState() {
+      setIsStickyControlsStuck(observedSentinel.getBoundingClientRect().bottom <= 0);
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -290,13 +299,22 @@ export function RecipesPage({
       { threshold: 0 },
     );
 
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+    observer.observe(observedSentinel);
+    updateStickyState();
+    window.addEventListener("scroll", updateStickyState, { passive: true });
+    window.addEventListener("resize", updateStickyState, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateStickyState);
+      window.removeEventListener("resize", updateStickyState);
+    };
   }, []);
 
   useEffect(() => {
     if (status === "signedOut") {
       setRecipes([]);
+      setAllKnownTags([]);
       setNextCursor(null);
       setTotalRecipeCount(0);
       setLoadingRecipes(false);
@@ -362,6 +380,34 @@ export function RecipesPage({
   }, [user]);
 
   useEffect(() => {
+    const loadedTags = knownTagsFromRecipes(recipes);
+    if (loadedTags.length === 0) return;
+
+    setAllKnownTags((current) =>
+      Array.from(new Set([...current, ...loadedTags])).sort((a, b) => a.localeCompare(b)),
+    );
+  }, [recipes]);
+
+  useEffect(() => {
+    if (!userIdForTags || status === "loading" || status === "signedOut") return;
+    let cancelled = false;
+
+    void loadAllRecipeTags(userIdForTags)
+      .then((tags) => {
+        if (!cancelled) {
+          setAllKnownTags(tags);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, userIdForTags]);
+
+  useEffect(() => {
     if (!user || recipes.length === 0) return;
     const userId = user.uid;
 
@@ -417,8 +463,6 @@ export function RecipesPage({
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [loadingRecipes, nextCursor, user]);
-
-  const allKnownTags = useMemo(() => knownTagsFromRecipes(recipes), [recipes]);
 
   useLayoutEffect(() => {
     const scroller = tagScrollerRef.current;
@@ -749,14 +793,6 @@ export function RecipesPage({
                 <h2 id="mobile-filter-drawer-title">Sort and filter</h2>
                 <p>Choose how recipes are ordered and narrow the grid by tag.</p>
               </div>
-              <button
-                aria-label="Close sort and filters"
-                className="cp-filter-drawer__close"
-                onClick={() => setIsMobileFilterDrawerOpen(false)}
-                type="button"
-              >
-                <X size={16} weight="bold" />
-              </button>
             </div>
 
             <label className="cp-filter-drawer__field">
@@ -849,15 +885,6 @@ function ImportRecipeDialog({
       <section className="cp-settings-card">
         <div className="cp-settings-card__header">
           <h2 id="new-recipe-title">New recipe</h2>
-          <Button
-            aria-label="Close new recipe"
-            className="cp-settings-card__close"
-            onClick={onClose}
-            size="compact"
-            variant="icon"
-          >
-            <X size={18} />
-          </Button>
         </div>
         <ImportRecipePanel framed={false} onComplete={onComplete} />
       </section>
@@ -872,7 +899,7 @@ function SettingsDialog({
 }) {
   return (
     <ModalShell aria-labelledby="settings-title" onClose={onClose} variant="settings">
-      <SettingsPanel onClose={onClose} titleId="settings-title" />
+      <SettingsPanel titleId="settings-title" />
     </ModalShell>
   );
 }
