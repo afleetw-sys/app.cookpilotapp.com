@@ -6,7 +6,6 @@ import {
   Check,
   DotsSixVertical,
   Fire,
-  FloppyDisk,
   PencilSimple,
   Plus,
   ShareNetwork,
@@ -1524,7 +1523,6 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           {isEditingRecipe ? (
             <>
               <Button onClick={handleCancelEdit} size="compact" variant="secondary">
-                <X size={15} />
                 Cancel
               </Button>
               <Button
@@ -1534,8 +1532,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                 size="compact"
                 variant="secondary"
               >
-                {savingEdit ? <ArrowClockwise className="cp-spin" size={16} /> : <FloppyDisk size={16} />}
-                Save
+                {savingEdit ? "Saving..." : "Save"}
               </Button>
             </>
           ) : (
@@ -2204,8 +2201,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
                 type="submit"
                 variant="secondary"
               >
-                {savingQuickTime ? <ArrowClockwise className="cp-spin" size={16} /> : <Check size={16} />}
-                Save
+                {savingQuickTime ? "Saving..." : "Save"}
               </Button>
             </div>
           </form>
