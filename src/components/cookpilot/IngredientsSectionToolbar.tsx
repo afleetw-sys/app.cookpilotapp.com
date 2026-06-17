@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Minus, Plus, Swap, X } from "@phosphor-icons/react";
+import { Check, Minus, Plus, Swap } from "@phosphor-icons/react";
 import { useState } from "react";
 import { ModalShell } from "@/components/cookpilot/ModalShell";
 import { measurementModeTitle, type MeasurementMode } from "@/lib/cookpilot/ingredientDisplay";
@@ -32,14 +32,6 @@ export function IngredientMeasurementDialog({
 }) {
   return (
     <ModalShell aria-labelledby="measurement-dialog-title" onClose={onClose} variant="measurements">
-      <button
-        aria-label="Close measurement converter"
-        className="cp-measurement-dialog__close"
-        onClick={onClose}
-        type="button"
-      >
-        <X size={14} weight="bold" />
-      </button>
       <div className="cp-measurement-dialog__header">
         <Swap size={22} weight="bold" />
         <div>

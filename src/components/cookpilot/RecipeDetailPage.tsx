@@ -149,6 +149,14 @@ function formatTimeValue(hours: number, minutes: number): string | null {
   return parts.join(" ");
 }
 
+function scrollRecipeDetailToTop() {
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.documentElement.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.body.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.querySelector<HTMLElement>(".cp-shell")?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.querySelector<HTMLElement>(".cp-shell__main")?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+}
+
 const MINUTE_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
 function TimePickerField({
@@ -734,7 +742,10 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   }, [user, isEditingRecipe]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "auto" });
+    scrollRecipeDetailToTop();
+    const animationFrame = window.requestAnimationFrame(scrollRecipeDetailToTop);
+
+    return () => window.cancelAnimationFrame(animationFrame);
   }, [recipeId]);
 
   useEffect(() => {
@@ -1529,13 +1540,25 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
             </>
           ) : (
             <>
-              <Button onClick={handleEditClick} size="compact" variant="secondary">
+              <Button
+                aria-label="Edit recipe"
+                className="cp-detail__topbar-action-button"
+                onClick={handleEditClick}
+                size="compact"
+                variant="secondary"
+              >
                 <PencilSimple size={15} />
-                Edit
+                <span className="cp-detail__topbar-action-label">Edit</span>
               </Button>
-              <Button onClick={() => void handleShareRecipe()} size="compact" variant="secondary">
+              <Button
+                aria-label="Share recipe"
+                className="cp-detail__topbar-action-button"
+                onClick={() => void handleShareRecipe()}
+                size="compact"
+                variant="secondary"
+              >
                 <ShareNetwork size={15} />
-                Share
+                <span className="cp-detail__topbar-action-label">Share</span>
               </Button>
             </>
           )}

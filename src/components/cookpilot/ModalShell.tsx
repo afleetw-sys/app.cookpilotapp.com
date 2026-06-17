@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "@phosphor-icons/react";
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
@@ -89,6 +90,14 @@ export function ModalShell({
         role="dialog"
         tabIndex={-1}
       >
+        <button
+          aria-label="Close dialog"
+          className="cp-modal-card__close"
+          onClick={onClose}
+          type="button"
+        >
+          <X size={16} weight="bold" />
+        </button>
         {children}
       </div>
     </div>,

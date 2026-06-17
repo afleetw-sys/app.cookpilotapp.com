@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Sparkle, X } from "@phosphor-icons/react";
+import { CheckCircle, Sparkle } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { PackageType } from "@revenuecat/purchases-js";
 import type { Package } from "@revenuecat/purchases-js";
@@ -111,15 +111,6 @@ export function PaywallDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <ModalShell aria-labelledby="paywall-title" onClose={onClose} variant="paywall">
-      <button
-        aria-label="Close"
-        className="cp-paywall-card__close"
-        onClick={onClose}
-        type="button"
-      >
-        <X size={18} />
-      </button>
-
       <div className="cp-paywall-card__header">
         <Sparkle className="cp-paywall-card__icon" size={28} weight="fill" />
         <h2 className="cp-paywall-card__title" id="paywall-title">

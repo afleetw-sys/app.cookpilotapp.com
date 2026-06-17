@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft, X } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { AuthCard } from "@/components/cookpilot/AuthCard";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -171,6 +171,14 @@ export function AuthDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="cp-auth-screen">
+      <button
+        aria-label="Close sign in"
+        className="cp-auth-screen__close"
+        onClick={onClose}
+        type="button"
+      >
+        <X size={18} weight="bold" />
+      </button>
       <button
         aria-label="Go back"
         className="cp-auth-screen__back"

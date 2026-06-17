@@ -793,14 +793,6 @@ export function RecipesPage({
                 <h2 id="mobile-filter-drawer-title">Sort and filter</h2>
                 <p>Choose how recipes are ordered and narrow the grid by tag.</p>
               </div>
-              <button
-                aria-label="Close sort and filters"
-                className="cp-filter-drawer__close"
-                onClick={() => setIsMobileFilterDrawerOpen(false)}
-                type="button"
-              >
-                <X size={16} weight="bold" />
-              </button>
             </div>
 
             <label className="cp-filter-drawer__field">
@@ -893,15 +885,6 @@ function ImportRecipeDialog({
       <section className="cp-settings-card">
         <div className="cp-settings-card__header">
           <h2 id="new-recipe-title">New recipe</h2>
-          <Button
-            aria-label="Close new recipe"
-            className="cp-settings-card__close"
-            onClick={onClose}
-            size="compact"
-            variant="icon"
-          >
-            <X size={18} />
-          </Button>
         </div>
         <ImportRecipePanel framed={false} onComplete={onComplete} />
       </section>
@@ -916,7 +899,7 @@ function SettingsDialog({
 }) {
   return (
     <ModalShell aria-labelledby="settings-title" onClose={onClose} variant="settings">
-      <SettingsPanel onClose={onClose} titleId="settings-title" />
+      <SettingsPanel titleId="settings-title" />
     </ModalShell>
   );
 }
