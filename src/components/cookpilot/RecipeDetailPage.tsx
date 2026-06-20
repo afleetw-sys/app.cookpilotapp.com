@@ -891,6 +891,17 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     return seed ? buildRecipePalette(seed) : null;
   }, [selectedRecipe?.themeSeedColors]);
 
+  function isEditQuotaExceededError(error: unknown) {
+    const code = (error as { code?: string }).code;
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    return (
+      code === "functions/resource-exhausted" ||
+      code === "functions/failed-precondition" ||
+      message.includes("quota") ||
+      message.includes("limit")
+    );
+  }
+
   useEffect(() => {
     const root = document.documentElement;
     const vars: [string, string][] = recipePalette ? [
@@ -942,6 +953,14 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         selectedIngredient: selectedIngredientForAI,
       });
 
+      // Server reserves signed-in usage before doing AI work; anonymous usage
+      // remains local-only in the web client.
+      if (storageUserId) {
+        void loadUsageInfo(storageUserId, isSubscribed).then(setUsageInfo);
+      } else {
+        void recordEditUsage(null, isSubscribed).then(setUsageInfo);
+      }
+
       if (result.outcome === "refused") {
         setEditState((current) => ({
           ...current,
@@ -951,9 +970,6 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         }));
         return;
       }
-
-      // Record usage after a successful (non-refused) edit.
-      void recordEditUsage(storageUserId, isSubscribed).then(setUsageInfo);
 
       if (isEditingRecipe && editDraft) {
         setEditDraft((current) =>
@@ -1001,6 +1017,16 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       setSelectedIngredientForAI(null);
     } catch (error) {
       console.error(error);
+      if (isEditQuotaExceededError(error)) {
+        setShowPaywall(true);
+        void loadUsageInfo(storageUserId, isSubscribed).then(setUsageInfo);
+        setEditState((current) => ({
+          ...current,
+          loading: false,
+          error: null,
+        }));
+        return;
+      }
       setEditState((current) => ({
         ...current,
         loading: false,

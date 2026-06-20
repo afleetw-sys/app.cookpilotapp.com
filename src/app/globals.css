@@ -2009,6 +2009,14 @@ html[data-theme="dark"] .cp-detail--page {
   flex-wrap: wrap;
 }
 
+.cp-detail__topbar-action-button {
+  border: 1px solid var(--cp-line);
+}
+
+.cp-detail__topbar-action-button:hover {
+  border-color: var(--cp-line-strong);
+}
+
 .cp-detail__topbar-action-label {
   display: inline;
 }
@@ -4369,6 +4377,15 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
     margin-top: 0;
   }
 
+  /* Give the recipe content sections a little more breathing room on mobile. */
+  .cp-detail--page > .cp-detail__grid {
+    margin-top: var(--cp-space-6);
+  }
+
+  .cp-detail__grid {
+    row-gap: var(--cp-space-6);
+  }
+
   .cp-detail__section-card {
     gap: var(--cp-space-3);
   }
@@ -4480,17 +4497,32 @@ html[data-theme="dark"] .cp-import-mode-toggle__item.is-active {
   }
 
   .cp-detail__topbar-action-button {
-    width: 40px;
-    min-width: 40px;
+    width: 46px;
+    min-width: 46px;
+    min-height: 46px;
     padding: 0;
+    border: 0;
     background: transparent;
     color: var(--cp-ink-soft);
   }
 
   .cp-detail__topbar-action-button:hover {
+    border: 0;
     background: rgba(127, 127, 127, 0.1);
     color: var(--cp-ink);
     transform: none;
+  }
+
+  .cp-detail__topbar .cp-button--icon {
+    width: 46px;
+    min-width: 46px;
+    min-height: 46px;
+  }
+
+  .cp-detail__topbar .cp-button--icon svg,
+  .cp-detail__topbar-action-button svg {
+    width: 22px;
+    height: 22px;
   }
 
   .cp-detail__topbar-action-label {
