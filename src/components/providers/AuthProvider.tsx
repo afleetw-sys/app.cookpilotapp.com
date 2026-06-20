@@ -223,9 +223,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const mergePromise = (async () => {
-      // No need to wait for anonymous user document — we intentionally don't
-      // create Firestore documents for anonymous users. The merge Cloud Function
-      // copies their recipes subcollection directly without needing a user doc.
+      // The anonymous session now always has a users/{uid} document (created at
+      // sign-in, mirroring iOS). The merge Cloud Function claims that doc, copies
+      // the recipes subcollection, and deletes the anonymous doc when finished —
+      // so there is nothing to wait for here.
       const { mergeAnonymousAccount } = await import("@/lib/cookpilot/functions");
       await mergeAnonymousAccount(anonymousUid);
       await auth.currentUser?.reload();
@@ -263,101 +264,101 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (handlerRunning) return;
       handlerRunning = true;
 
-      if (!nextUser) {
-        // Immediately signal "loading" so the UI stops showing stale authenticated
-        // content while we determine whether to restore a persisted user or create
-        // a new anonymous one. Without this, RecipesPage keeps the old user in state
-        // and fires Firestore fetches against a cleared session cache, causing the
-        // jarring flash/error state visible during sign-out.
-        setUser(null);
-        setStatus("loading");
+      try {
+        if (!nextUser) {
+          // Immediately signal "loading" so the UI stops showing stale authenticated
+          // content while we determine whether to restore a persisted user or create
+          // a new anonymous one. Without this, RecipesPage keeps the old user in state
+          // and fires Firestore fetches against a cleared session cache, causing the
+          // jarring flash/error state visible during sign-out.
+          setUser(null);
+          setStatus("loading");
 
-        // Wait for Firebase to finish loading the stored user from localStorage.
-        await auth.authStateReady();
-        if (cancelled) return;
+          // Wait for Firebase to finish loading the stored user from localStorage.
+          await auth.authStateReady();
+          if (cancelled) return;
 
-        const restoredUser = auth.currentUser;
-        if (restoredUser) {
-          setUser(restoredUser);
-          setStatus(restoredUser.isAnonymous ? "anonymous" : "authenticated");
-          if (restoredUser.isAnonymous) {
-            rememberAnonymousUid(restoredUser.uid);
-          } else {
-            rememberAuthenticatedSession(restoredUser);
+          const restoredUser = auth.currentUser;
+          if (restoredUser) {
+            setUser(restoredUser);
+            setStatus(restoredUser.isAnonymous ? "anonymous" : "authenticated");
+            if (restoredUser.isAnonymous) {
+              rememberAnonymousUid(restoredUser.uid);
+            } else {
+              rememberAuthenticatedSession(restoredUser);
+            }
+            return;
           }
-          handlerRunning = false;
+
+          if (hasAuthenticatedSessionMarker()) {
+            await wait(AUTH_RESTORE_GRACE_MS);
+            if (cancelled) return;
+
+            const delayedRestoredUser = auth.currentUser;
+            if (delayedRestoredUser) {
+              setUser(delayedRestoredUser);
+              setStatus(delayedRestoredUser.isAnonymous ? "anonymous" : "authenticated");
+              if (!delayedRestoredUser.isAnonymous) {
+                rememberAuthenticatedSession(delayedRestoredUser);
+              }
+              return;
+            }
+
+            forgetAuthenticatedSession();
+          }
+
+          // If we have a stored anonymous UID but Firebase says no user, wait a
+          // bit before giving up — this can happen transiently during token
+          // validation on a slow network. Avoids silently creating a new anon
+          // user and losing all the previous session's imported recipes.
+          const storedAnonUid = getStoredAnonymousUid();
+          if (storedAnonUid) {
+            await wait(1500);
+            if (cancelled) return;
+            const recovered = auth.currentUser;
+            if (recovered) {
+              setUser(recovered);
+              setStatus(recovered.isAnonymous ? "anonymous" : "authenticated");
+              if (recovered.isAnonymous) {
+                rememberAnonymousUid(recovered.uid);
+              } else {
+                rememberAuthenticatedSession(recovered);
+              }
+              return;
+            }
+            // Still no user — the anonymous account is truly gone.
+            forgetAnonymousUid();
+          }
+
+          setUser(null);
+          setStatus("signedOut");
           return;
         }
 
-        if (hasAuthenticatedSessionMarker()) {
-          await wait(AUTH_RESTORE_GRACE_MS);
-          if (cancelled) return;
-
-          const delayedRestoredUser = auth.currentUser;
-          if (delayedRestoredUser) {
-            setUser(delayedRestoredUser);
-            setStatus(delayedRestoredUser.isAnonymous ? "anonymous" : "authenticated");
-            if (!delayedRestoredUser.isAnonymous) {
-              rememberAuthenticatedSession(delayedRestoredUser);
-            }
-            return;
-          }
-
-          forgetAuthenticatedSession();
-        }
-
-        // If we have a stored anonymous UID but Firebase says no user, wait a
-        // bit before giving up — this can happen transiently during token
-        // validation on a slow network. Avoids silently creating a new anon
-        // user and losing all the previous session's imported recipes.
-        const storedAnonUid = getStoredAnonymousUid();
-        if (storedAnonUid) {
-          await wait(1500);
-          if (cancelled) return;
-          const recovered = auth.currentUser;
-          if (recovered) {
-            setUser(recovered);
-            setStatus(recovered.isAnonymous ? "anonymous" : "authenticated");
-            if (recovered.isAnonymous) {
-              rememberAnonymousUid(recovered.uid);
-            } else {
-              rememberAuthenticatedSession(recovered);
-            }
-            handlerRunning = false;
-            return;
-          }
-          // Still no user — the anonymous account is truly gone.
+        setUser(nextUser);
+        setStatus(nextUser.isAnonymous ? "anonymous" : "authenticated");
+        if (nextUser.isAnonymous) {
+          rememberAnonymousUid(nextUser.uid);
+        } else {
+          rememberAuthenticatedSession(nextUser);
           forgetAnonymousUid();
+          // Only track lastActive for real authenticated users — anonymous users
+          // have no persistent identity worth session-frequency tracking, and
+          // calling this on anon users caused spurious Firestore writes before
+          // their user document was guaranteed to exist.
+          void updateUserSessionMetadata(nextUser);
+          // Self-healing: if the Firestore write failed during a previous sign-in
+          // (auth record exists, user doc does not), recreate it. The localStorage
+          // flag ensures this only runs once per UID, not on every token refresh.
+          if (!isUserDocEnsured(nextUser.uid)) {
+            void ensureUserDocument(nextUser, nextUser.providerData[0]?.providerId ?? "password").catch(
+              (error) => console.error("ensureUserDocument recovery failed", error),
+            );
+          }
         }
-
-        setUser(null);
-        setStatus("signedOut");
+      } finally {
         handlerRunning = false;
-        return;
       }
-
-      setUser(nextUser);
-      setStatus(nextUser.isAnonymous ? "anonymous" : "authenticated");
-      if (nextUser.isAnonymous) {
-        rememberAnonymousUid(nextUser.uid);
-      } else {
-        rememberAuthenticatedSession(nextUser);
-        forgetAnonymousUid();
-        // Only track lastActive for real authenticated users — anonymous users
-        // have no persistent identity worth session-frequency tracking, and
-        // calling this on anon users caused spurious Firestore writes before
-        // their user document was guaranteed to exist.
-        void updateUserSessionMetadata(nextUser);
-        // Self-healing: if the Firestore write failed during a previous sign-in
-        // (auth record exists, user doc does not), recreate it. The localStorage
-        // flag ensures this only runs once per UID, not on every token refresh.
-        if (!isUserDocEnsured(nextUser.uid)) {
-          void ensureUserDocument(nextUser, nextUser.providerData[0]?.providerId ?? "password").catch(
-            (error) => console.error("ensureUserDocument recovery failed", error),
-          );
-        }
-      }
-      handlerRunning = false;
     });
 
     return () => {
@@ -382,6 +383,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!pendingAnonSignIn) {
       pendingAnonSignIn = (async () => {
         const { user: anonUser } = await signInAnonymously(auth);
+
+        // Mirror iOS: an anonymous Auth UID must always have a matching
+        // users/{uid} document. If the write fails, roll the Auth user back so
+        // we never leave an orphaned anonymous account behind.
+        try {
+          await ensureUserDocument(anonUser, "anonymous");
+        } catch (error) {
+          try {
+            await deleteUser(anonUser);
+          } catch {
+            await signOut(auth);
+          }
+          forgetAnonymousUid();
+          throw error;
+        }
+
         rememberAnonymousUid(anonUser.uid);
         setUser(anonUser);
         setStatus("anonymous");

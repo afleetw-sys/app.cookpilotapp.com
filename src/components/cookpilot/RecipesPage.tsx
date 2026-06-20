@@ -191,6 +191,7 @@ export function RecipesPage({
       initialSessionCache?.lastViewedTimestamps ?? createInitialLastViewedTimestamps(),
   );
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreInFlightCursorRef = useRef<string | null>(null);
   const stickyControlsSentinelRef = useRef<HTMLDivElement | null>(null);
   const tagScrollerRef = useRef<HTMLDivElement | null>(null);
   const [columnCount, setColumnCount] = useState(() => calcRecipeColumnCount());
@@ -201,6 +202,9 @@ export function RecipesPage({
   const anonymousRecipeCount = Math.max(totalRecipeCount, recipes.length);
   const importRequiresAuth =
     status === "anonymous" && anonymousRecipeCount >= MAX_ANONYMOUS_RECIPES;
+  const loadMoreCursorKey = nextCursor
+    ? `${nextCursor.createdAt.toISOString()}:${nextCursor.id}`
+    : null;
 
   function openImportDialog() {
     if (importRequiresAuth) {
@@ -377,7 +381,7 @@ export function RecipesPage({
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [status, user]);
 
   useEffect(() => {
     const loadedTags = knownTagsFromRecipes(recipes);
@@ -440,17 +444,24 @@ export function RecipesPage({
       (entries) => {
         const entry = entries[0];
         if (!entry?.isIntersecting) return;
+        if (loadMoreInFlightCursorRef.current === loadMoreCursorKey) return;
 
         void (async () => {
+          loadMoreInFlightCursorRef.current = loadMoreCursorKey;
           setLoadingRecipes(true);
           try {
             const page = await loadRecipePage(userId, nextCursor);
-            setRecipes((current) => [...current, ...page.recipes]);
+            setRecipes((current) => {
+              const currentIds = new Set(current.map((recipe) => recipe.id));
+              const newRecipes = page.recipes.filter((recipe) => !currentIds.has(recipe.id));
+              return [...current, ...newRecipes];
+            });
             setNextCursor(page.nextCursor);
           } catch (error) {
             console.error(error);
             setRecipesError("Couldn’t load more recipes.");
           } finally {
+            loadMoreInFlightCursorRef.current = null;
             setLoadingRecipes(false);
           }
         })();
@@ -462,7 +473,7 @@ export function RecipesPage({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadingRecipes, nextCursor, user]);
+  }, [loadMoreCursorKey, loadingRecipes, nextCursor, user]);
 
   useLayoutEffect(() => {
     const scroller = tagScrollerRef.current;

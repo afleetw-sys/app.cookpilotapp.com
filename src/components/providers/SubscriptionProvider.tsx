@@ -31,18 +31,24 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   // Track the last UID we configured RC for to avoid redundant fetches.
   const lastConfiguredUidRef = useRef<string | null>(null);
+  const statusRequestIdRef = useRef(0);
+  const userSkipsSubscriptionFetch =
+    Boolean(user?.isAnonymous && !hasWebPurchaseMarker(user.uid));
 
-  const fetchStatus = useCallback(async (uid: string) => {
+  const fetchStatus = useCallback(async (uid: string, requestId: number) => {
     try {
       const purchases = configureRevenueCat(uid);
       const customerInfo = await purchases.getCustomerInfo();
+      if (requestId !== statusRequestIdRef.current) return;
       setIsSubscribed(
         customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined
       );
     } catch (error) {
+      if (requestId !== statusRequestIdRef.current) return;
       console.error("[SubscriptionProvider] failed to fetch customer info", error);
       setIsSubscribed(false);
     } finally {
+      if (requestId !== statusRequestIdRef.current) return;
       setIsLoading(false);
     }
   }, []);
@@ -50,37 +56,48 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // Re-configure RC and re-fetch whenever the Firebase UID changes.
   useEffect(() => {
     if (!user) {
-      setIsLoading(false);
+      statusRequestIdRef.current += 1;
+      lastConfiguredUidRef.current = null;
       return;
     }
 
     if (user.uid === lastConfiguredUidRef.current) return;
 
     lastConfiguredUidRef.current = user.uid;
+    const requestId = statusRequestIdRef.current + 1;
+    statusRequestIdRef.current = requestId;
 
     // Contacting RevenueCat registers the UID as a customer, and anonymous
     // visitors mint a fresh UID per browser session — so only fetch for
     // anonymous users when this browser has evidence of a past purchase.
     // Everyone else can't have an entitlement yet.
-    if (user.isAnonymous && !hasWebPurchaseMarker(user.uid)) {
-      setIsSubscribed(false);
-      setIsLoading(false);
+    if (userSkipsSubscriptionFetch) {
       return;
     }
 
-    setIsLoading(true);
-    void fetchStatus(user.uid);
-  }, [user, fetchStatus]);
+    void Promise.resolve().then(() => {
+      if (requestId === statusRequestIdRef.current) {
+        setIsLoading(true);
+      }
+    });
+    void fetchStatus(user.uid, requestId);
+  }, [fetchStatus, user, userSkipsSubscriptionFetch]);
 
   const refreshSubscriptionStatus = useCallback(async () => {
     if (!user) return;
+    const requestId = statusRequestIdRef.current + 1;
+    statusRequestIdRef.current = requestId;
     setIsLoading(true);
-    await fetchStatus(user.uid);
+    await fetchStatus(user.uid, requestId);
   }, [user, fetchStatus]);
 
   return (
     <SubscriptionContext.Provider
-      value={{ isSubscribed, isLoading, refreshSubscriptionStatus }}
+      value={{
+        isSubscribed: user && !userSkipsSubscriptionFetch ? isSubscribed : false,
+        isLoading: user && !userSkipsSubscriptionFetch ? isLoading : false,
+        refreshSubscriptionStatus,
+      }}
     >
       {children}
     </SubscriptionContext.Provider>
