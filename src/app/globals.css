@@ -2108,7 +2108,7 @@ html[data-theme="dark"] .cp-detail--page {
   width: 100%;
   margin: 0 auto;
   padding: clamp(28px, 3vw, 44px);
-  border: 0;
+  border: 1px solid var(--cp-line);
   border-radius: 28px;
   background: transparent;
   box-shadow:
