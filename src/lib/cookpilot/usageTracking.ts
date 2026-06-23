@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/db";
 
 export const MONTHLY_FREE_EDIT_LIMIT = 3;
@@ -56,21 +56,8 @@ async function loadUsageFromFirestore(
   }
 }
 
-async function saveUsageToFirestore(
-  userId: string,
-  count: number,
-  monthKey: string,
-): Promise<void> {
-  try {
-    await setDoc(
-      doc(db, "users", userId),
-      { monthlyEditCount: count, monthlyEditMonthKey: monthKey },
-      { merge: true },
-    );
-  } catch (error) {
-    console.error("[usageTracking] failed to save usage to Firestore", error);
-  }
-}
+// No client-side Firestore writer: the editRecipe Cloud Function is the single writer of
+// monthlyEditCount for signed-in users. This module only reads it.
 
 // ── localStorage (anonymous users) ──────────────────────────────────────────
 
@@ -99,7 +86,8 @@ function saveLocalUsage(count: number, monthKey: string): void {
 
 /**
  * Load current usage info for a user. Pass null for anonymous users.
- * Always resets count if we've moved into a new month.
+ * Shows a fresh quota once the month rolls over. Signed-in counts are owned by the
+ * editRecipe Cloud Function — this never writes monthlyEditCount.
  */
 export async function loadUsageInfo(
   userId: string | null,
@@ -115,18 +103,15 @@ export async function loadUsageInfo(
 
   if (userId) {
     ({ count, monthKey } = await loadUsageFromFirestore(userId));
+    // Stale month → show a full quota for display only. The Cloud Function performs the
+    // real reset server-side on the user's next edit; the client must not write the count.
+    if (monthKey !== currentMonthKey) count = 0;
   } else {
     ({ count, monthKey } = loadLocalUsage());
-  }
-
-  // Reset if we've moved into a new month.
-  if (monthKey !== currentMonthKey) {
-    count = 0;
-    monthKey = currentMonthKey;
-    if (userId) {
-      void saveUsageToFirestore(userId, 0, monthKey);
-    } else {
-      saveLocalUsage(0, monthKey);
+    // Anonymous counts are client-owned (no server doc), so reset them locally.
+    if (monthKey !== currentMonthKey) {
+      count = 0;
+      saveLocalUsage(0, currentMonthKey);
     }
   }
 
@@ -154,18 +139,16 @@ export function subscribeToUsageInfo(
     return () => {};
   }
 
-  const currentMonthKey = getCurrentMonthKey();
-
   return onSnapshot(doc(db, "users", userId), (snapshot) => {
+    // Recomputed per fire so a listener that outlives a month boundary stays correct.
+    const currentMonthKey = getCurrentMonthKey();
     const data = snapshot.exists() ? (snapshot.data() as Partial<FirestoreUsage>) : {};
     let count = data.monthlyEditCount ?? 0;
     const monthKey = data.monthlyEditMonthKey ?? currentMonthKey;
 
-    // If the stored month is stale, treat count as 0 and reset in Firestore.
-    if (monthKey !== currentMonthKey) {
-      count = 0;
-      void saveUsageToFirestore(userId, 0, currentMonthKey);
-    }
+    // Stale month → display a full quota. The editRecipe Cloud Function owns the real
+    // reset (it does so on the next edit); the client never writes monthlyEditCount.
+    if (monthKey !== currentMonthKey) count = 0;
 
     onUpdate({
       remaining: Math.max(0, MONTHLY_FREE_EDIT_LIMIT - count),
@@ -177,8 +160,11 @@ export function subscribeToUsageInfo(
 }
 
 /**
- * Record one AI edit use. Call after a successful edit.
- * Returns the updated UsageInfo.
+ * Record one AI edit for an ANONYMOUS user (local-only counter). Call after a successful edit.
+ *
+ * Signed-in usage is owned by the editRecipe Cloud Function, which increments the count
+ * server-side as part of the edit — for signed-in users re-read via loadUsageInfo /
+ * subscribeToUsageInfo instead, never call this (it would be a second, conflicting writer).
  */
 export async function recordEditUsage(
   userId: string | null,
@@ -188,20 +174,15 @@ export async function recordEditUsage(
     return { remaining: null, total: null, resetDate: null, isSubscribed: true };
   }
 
-  const currentMonthKey = getCurrentMonthKey();
-  let count: number;
-
+  // Defensive: a signed-in caller is a bug — fall back to a read rather than writing.
   if (userId) {
-    const stored = await loadUsageFromFirestore(userId);
-    count = stored.monthKey === currentMonthKey ? stored.count : 0;
-    count += 1;
-    void saveUsageToFirestore(userId, count, currentMonthKey);
-  } else {
-    const stored = loadLocalUsage();
-    count = stored.monthKey === currentMonthKey ? stored.count : 0;
-    count += 1;
-    saveLocalUsage(count, currentMonthKey);
+    return loadUsageInfo(userId, isSubscribed);
   }
+
+  const currentMonthKey = getCurrentMonthKey();
+  const stored = loadLocalUsage();
+  const count = (stored.monthKey === currentMonthKey ? stored.count : 0) + 1;
+  saveLocalUsage(count, currentMonthKey);
 
   const remaining = Math.max(0, MONTHLY_FREE_EDIT_LIMIT - count);
   return {

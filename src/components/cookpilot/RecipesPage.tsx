@@ -175,6 +175,10 @@ export function RecipesPage({
   const [sortOption, setSortOption] = useState<RecipeSortOption>(
     () => initialStoredBrowseState.sortOption ?? "createdDate",
   );
+  // Read inside the fetch effect (which only depends on status/user) so the
+  // initial load knows the active sort without re-running on every sort change.
+  const sortOptionRef = useRef(sortOption);
+  sortOptionRef.current = sortOption;
   const [activeTagFilters, setActiveTagFilters] = useState<Set<string>>(
     () => new Set(initialStoredBrowseState.activeTagFilters ?? []),
   );
@@ -360,9 +364,30 @@ export function RecipesPage({
             setTotalRecipeCount(page.totalCount);
           }
         } else {
-          setRecipes(page.recipes);
-          setNextCursor(page.nextCursor);
-          setTotalRecipeCount(page.totalCount ?? page.recipes.length);
+          // Server pagination is ordered by createdAt desc, but the grid
+          // re-sorts client-side. For "Date added" that order already matches,
+          // so reveal page 1 immediately. For other sorts, revealing page 1 and
+          // then streaming in later pages makes the list visibly reshuffle — so
+          // load the full set first and reveal once the sorted order is stable.
+          let accumulated = page.recipes;
+          let cursor = page.nextCursor;
+
+          if (sortOptionRef.current !== "createdDate") {
+            while (cursor) {
+              const nextPage = await loadRecipePage(userId, cursor);
+              if (cancelled) return;
+              const seen = new Set(accumulated.map((recipe) => recipe.id));
+              accumulated = [
+                ...accumulated,
+                ...nextPage.recipes.filter((recipe) => !seen.has(recipe.id)),
+              ];
+              cursor = nextPage.nextCursor;
+            }
+          }
+
+          setRecipes(accumulated);
+          setNextCursor(cursor);
+          setTotalRecipeCount(page.totalCount ?? accumulated.length);
         }
       } catch (error) {
         console.error(error);
