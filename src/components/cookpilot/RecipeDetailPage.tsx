@@ -953,12 +953,10 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         selectedIngredient: selectedIngredientForAI,
       });
 
-      // Server reserves signed-in usage before doing AI work; anonymous usage
-      // remains local-only in the web client.
+      // Signed-in usage is owned server-side by the editRecipe Cloud Function. Re-read it
+      // for any outcome — this also reflects the refund when an edit is refused or fails.
       if (storageUserId) {
         void loadUsageInfo(storageUserId, isSubscribed).then(setUsageInfo);
-      } else {
-        void recordEditUsage(null, isSubscribed).then(setUsageInfo);
       }
 
       if (result.outcome === "refused") {
@@ -969,6 +967,12 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           result,
         }));
         return;
+      }
+
+      // Successful edit only: charge the anonymous local counter (a refusal returns above,
+      // so it isn't charged — matching the Cloud Function's refund for signed-in users).
+      if (!storageUserId) {
+        void recordEditUsage(null, isSubscribed).then(setUsageInfo);
       }
 
       if (isEditingRecipe && editDraft) {
