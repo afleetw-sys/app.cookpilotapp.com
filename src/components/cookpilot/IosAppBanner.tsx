@@ -60,14 +60,6 @@ export function IosAppBanner() {
 
   return (
     <aside className="cp-ios-app-banner" aria-label="Get the CookPilot app">
-      <button
-        aria-label="Dismiss app banner"
-        className="cp-ios-app-banner__dismiss"
-        onClick={dismiss}
-        type="button"
-      >
-        <span aria-hidden="true">×</span>
-      </button>
       <Image alt="CookPilot" className="cp-ios-app-banner__icon" height={48} src="/images/cp-logo-lg.png" width={48} />
       <div className="cp-ios-app-banner__copy">
         <strong>CookPilot</strong>
@@ -76,6 +68,14 @@ export function IosAppBanner() {
       <a className="cp-ios-app-banner__link" href={APP_STORE_URL}>
         View
       </a>
+      <button
+        aria-label="Dismiss app banner"
+        className="cp-ios-app-banner__dismiss"
+        onClick={dismiss}
+        type="button"
+      >
+        <span aria-hidden="true">×</span>
+      </button>
     </aside>
   );
 }

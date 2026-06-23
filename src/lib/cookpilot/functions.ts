@@ -106,7 +106,7 @@ const editRecipeCallable = httpsCallable<
 >(functions, "editRecipe");
 
 const mergeAnonymousAccountCallable = httpsCallable<
-  { anonymousUid: string },
+  { anonymousUid: string; anonymousIdToken: string },
   { success: boolean }
 >(functions, "mergeAnonymousAccount");
 
@@ -225,8 +225,11 @@ export async function editRecipe(params: {
   return result.data;
 }
 
-export async function mergeAnonymousAccount(anonymousUid: string): Promise<void> {
-  await mergeAnonymousAccountCallable({ anonymousUid });
+export async function mergeAnonymousAccount(
+  anonymousUid: string,
+  anonymousIdToken: string,
+): Promise<void> {
+  await mergeAnonymousAccountCallable({anonymousUid, anonymousIdToken});
 }
 
 export async function checkUserProviders(email: string): Promise<string[] | null> {
