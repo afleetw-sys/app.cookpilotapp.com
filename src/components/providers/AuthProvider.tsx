@@ -211,10 +211,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void updateUserSessionMetadata(userToFinalize);
   }, []);
 
-  const mergeAnonymousIfNeeded = useCallback(async (anonymousUid: string | null, nextUserId: string) => {
+  const mergeAnonymousIfNeeded = useCallback(async (
+    anonymousUid: string | null,
+    anonymousIdToken: string | null,
+    nextUserId: string,
+  ) => {
     if (!anonymousUid) return;
     if (anonymousUid === nextUserId) {
       throw new Error("Cannot merge anonymous account into itself.");
+    }
+    if (!anonymousIdToken) {
+      throw new Error("Anonymous session proof is missing.");
     }
 
     if (mergeAnonymousPromiseRef.current) {
@@ -228,7 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // the recipes subcollection, and deletes the anonymous doc when finished —
       // so there is nothing to wait for here.
       const { mergeAnonymousAccount } = await import("@/lib/cookpilot/functions");
-      await mergeAnonymousAccount(anonymousUid);
+      await mergeAnonymousAccount(anonymousUid, anonymousIdToken);
       await auth.currentUser?.reload();
 
       const refreshedUser = auth.currentUser;
@@ -416,6 +423,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const currentUser = auth.currentUser;
       const anonymousUid = currentUser?.isAnonymous ? currentUser.uid : null;
+      const anonymousIdToken = currentUser?.isAnonymous
+        ? await currentUser.getIdToken(true)
+        : null;
 
       if (currentUser?.isAnonymous) {
         try {
@@ -433,7 +443,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await finalizeAuthenticatedUser(result.user, "google.com");
       } finally {
-        await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+        await mergeAnonymousIfNeeded(anonymousUid, anonymousIdToken, result.user.uid);
       }
     } finally {
       setIsWorking(false);
@@ -445,6 +455,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const currentUser = auth.currentUser;
       const anonymousUid = currentUser?.isAnonymous ? currentUser.uid : null;
+      const anonymousIdToken = currentUser?.isAnonymous
+        ? await currentUser.getIdToken(true)
+        : null;
 
       if (currentUser?.isAnonymous) {
         try {
@@ -462,7 +475,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await finalizeAuthenticatedUser(result.user, "apple.com");
       } finally {
-        await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+        await mergeAnonymousIfNeeded(anonymousUid, anonymousIdToken, result.user.uid);
       }
     } finally {
       setIsWorking(false);
@@ -507,6 +520,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const normalizedEmail = email.trim().toLowerCase();
       const currentUser = auth.currentUser;
       const anonymousUid = currentUser?.isAnonymous ? currentUser.uid : null;
+      const anonymousIdToken = currentUser?.isAnonymous
+        ? await currentUser.getIdToken(true)
+        : null;
       const credential = EmailAuthProvider.credential(normalizedEmail, password);
 
       if (currentUser?.isAnonymous) {
@@ -542,7 +558,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await finalizeAuthenticatedUser(result.user, "password");
       } finally {
-        await mergeAnonymousIfNeeded(anonymousUid, result.user.uid);
+        await mergeAnonymousIfNeeded(anonymousUid, anonymousIdToken, result.user.uid);
       }
     } finally {
       setIsWorking(false);

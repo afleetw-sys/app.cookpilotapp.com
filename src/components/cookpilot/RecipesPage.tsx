@@ -802,7 +802,6 @@ export function RecipesPage({
             <div className="cp-filter-drawer__header">
               <div>
                 <h2 id="mobile-filter-drawer-title">Sort and filter</h2>
-                <p>Choose how recipes are ordered and narrow the grid by tag.</p>
               </div>
             </div>
 

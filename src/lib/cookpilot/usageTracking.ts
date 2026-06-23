@@ -15,9 +15,13 @@ export interface UsageInfo {
 
 // ── Month key helpers ────────────────────────────────────────────────────────
 
+// UTC so the key is byte-identical to the editRecipe Cloud Function, which writes the
+// signed-in user's monthlyEditMonthKey in UTC. Computing it in local time here would make
+// the client read a server-written key as a stale month near a month boundary and wrongly
+// reset the count.
 function getCurrentMonthKey(): string {
   const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function getNextResetDate(): Date {

@@ -32,6 +32,7 @@ import type {
   SavedRecipe,
 } from "@/lib/cookpilot/types";
 import { totalTimeMinutes } from "@/lib/cookpilot/timeFormatting";
+import { getStoredAttribution } from "@/lib/cookpilot/attribution";
 
 const COLLECTIONS = {
   users: "users",
@@ -206,6 +207,26 @@ export async function createUserDocument(params: {
 
     if (!existing.exists()) {
       update.createdAt = serverTimestamp();
+    }
+
+    // Attach first-touch marketing attribution the first time it is available
+    // and not already recorded. Writing only when `data.attribution` is unset
+    // preserves first-touch semantics (never overwritten) and survives the
+    // anonymous-account merge, so attribution captured on the anonymous landing
+    // session carries through to the real account it is claimed by.
+    if (!data.attribution) {
+      const attribution = getStoredAttribution();
+      if (
+        attribution &&
+        (attribution.utm_source || attribution.utm_medium || attribution.utm_campaign)
+      ) {
+        update.attribution = {
+          utmSource: attribution.utm_source,
+          utmMedium: attribution.utm_medium,
+          utmCampaign: attribution.utm_campaign,
+          firstTouchAt: attribution.first_touch_at,
+        };
+      }
     }
 
     if (params.isAnonymous) {

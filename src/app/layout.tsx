@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { IosAppBanner } from "@/components/cookpilot/IosAppBanner";
+import { AttributionTracker } from "@/components/cookpilot/AttributionTracker";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <AppProviders>{children}</AppProviders>
         </ErrorBoundary>
+        <AttributionTracker />
         <IosAppBanner />
       </body>
     </html>
