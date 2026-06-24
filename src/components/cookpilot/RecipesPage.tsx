@@ -178,7 +178,6 @@ export function RecipesPage({
   // Read inside the fetch effect (which only depends on status/user) so the
   // initial load knows the active sort without re-running on every sort change.
   const sortOptionRef = useRef(sortOption);
-  sortOptionRef.current = sortOption;
   const [activeTagFilters, setActiveTagFilters] = useState<Set<string>>(
     () => new Set(initialStoredBrowseState.activeTagFilters ?? []),
   );
@@ -291,7 +290,9 @@ export function RecipesPage({
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  useEffect(() => {
+  // The board is absent during the initial recipe load, so wait until its
+  // sentinel has mounted before subscribing to its sticky state.
+  useLayoutEffect(() => {
     const sentinel = stickyControlsSentinelRef.current;
     if (!sentinel) return;
     const observedSentinel = sentinel;
@@ -317,7 +318,11 @@ export function RecipesPage({
       window.removeEventListener("scroll", updateStickyState);
       window.removeEventListener("resize", updateStickyState);
     };
-  }, []);
+  }, [loadingRecipes, recipes.length]);
+
+  useEffect(() => {
+    sortOptionRef.current = sortOption;
+  }, [sortOption]);
 
   useEffect(() => {
     if (status === "signedOut") {
