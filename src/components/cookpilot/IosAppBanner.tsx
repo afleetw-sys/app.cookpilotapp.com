@@ -7,15 +7,12 @@ const APP_STORE_URL = "https://apps.apple.com/app/cookpilot/id6753838076";
 const DISMISSAL_KEY = "cookpilot.iosAppBannerDismissed";
 const listeners = new Set<() => void>();
 
-function isIPhoneOrIPad() {
-  const { userAgent, platform, maxTouchPoints } = window.navigator;
-
-  // iPadOS reports itself as macOS in some browsers.
-  return /iPad|iPhone|iPod/i.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
+function isIPhone() {
+  return /iPhone/i.test(window.navigator.userAgent);
 }
 
 function shouldShowBanner() {
-  if (typeof window === "undefined" || !isIPhoneOrIPad() || isSafari()) return false;
+  if (typeof window === "undefined" || !isIPhone() || isSafari()) return false;
 
   try {
     return window.localStorage.getItem(DISMISSAL_KEY) !== "1";
