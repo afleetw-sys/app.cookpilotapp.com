@@ -288,7 +288,11 @@ function DetailSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className={bare ? "cp-detail__section-card" : "cp-panel cp-panel--section"}>
+    <section
+      className={`cp-detail__section-surface ${
+        bare ? "cp-detail__section-card" : "cp-panel cp-panel--section"
+      }`}
+    >
       <SectionHeader title={title} titleAccessory={titleAccessory}>
         {action}
       </SectionHeader>
@@ -1592,7 +1596,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         </div>
       </div>
 
-      <header className={`cp-detail__hero ${(isEditingRecipe || hasDetailImage) ? "" : "cp-detail__hero--text-only"}`.trim()}>
+      <header
+        className={`cp-detail__hero cp-detail__section-surface ${(isEditingRecipe || hasDetailImage) ? "" : "cp-detail__hero--text-only"}`.trim()}
+      >
         <div className="cp-detail__hero-copy">
           {isEditingRecipe && editDraft ? (
             <div className="cp-inline-editor cp-inline-editor--hero">

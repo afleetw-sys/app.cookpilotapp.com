@@ -2110,10 +2110,6 @@ html[data-theme="dark"] .cp-detail--page {
   padding: clamp(28px, 3vw, 44px);
   border: 1px solid var(--cp-line);
   border-radius: 28px;
-  background: transparent;
-  box-shadow:
-    0 5px 12px rgba(23, 32, 56, 0.024),
-    0 1px 3px rgba(23, 32, 56, 0.018);
 }
 
 .cp-detail__hero-copy {
@@ -2604,7 +2600,7 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   gap: var(--cp-space-5);
 }
 
-.cp-detail--page .cp-panel--section {
+.cp-detail__section-surface {
   background: transparent;
   box-shadow:
     0 5px 12px rgba(23, 32, 56, 0.024),
@@ -2619,10 +2615,6 @@ html[data-theme="dark"] .cp-detail--page .cp-ingredients-header__servings-column
   padding: var(--cp-space-5);
   border: 0;
   border-radius: 28px;
-  background: transparent;
-  box-shadow:
-    0 5px 12px rgba(23, 32, 56, 0.024),
-    0 1px 3px rgba(23, 32, 56, 0.018);
 }
 
 .cp-detail__section-card--tags {
