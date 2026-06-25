@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { AppProviders } from "@/components/providers/AppProviders";
-import { IosAppBanner } from "@/components/cookpilot/IosAppBanner";
 import { AttributionTracker } from "@/components/cookpilot/AttributionTracker";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
@@ -27,7 +26,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="apple-itunes-app" content="app-id=6753838076" />
         {/* Preload critical Manrope weights to avoid text reflow */}
         <link rel="preload" href="/fonts/Manrope-Regular.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <link rel="preload" href="/fonts/Manrope-SemiBold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
@@ -35,13 +33,11 @@ export default function RootLayout({
         <link rel="preload" href="/fonts/Manrope-ExtraBold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
       </head>
       <body>
-        {/* eslint-disable-next-line react/no-danger */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <ErrorBoundary>
           <AppProviders>{children}</AppProviders>
         </ErrorBoundary>
         <AttributionTracker />
-        <IosAppBanner />
       </body>
     </html>
   );

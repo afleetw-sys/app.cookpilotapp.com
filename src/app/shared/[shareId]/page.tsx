@@ -5,6 +5,6 @@ type SharedRecipeRouteProps = {
 };
 
 export default async function SharedRecipeRoute({ params }: SharedRecipeRouteProps) {
-  const { shareId } = await params;
-  return <SharedRecipeImportPage shareId={shareId} />;
+  const { shareId: shareKey } = await params;
+  return <SharedRecipeImportPage shareKey={shareKey} />;
 }

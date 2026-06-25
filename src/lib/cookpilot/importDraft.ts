@@ -6,6 +6,9 @@ type ImportDraftPayload = {
   recipe: RecipeData;
   sourceURL: string | null;
   themeSeedColors?: RecipeThemeSeedColors | null;
+  // shareId of the `sharedRecipes` doc this draft was imported from, if any.
+  // Used to record the importer once the recipe is saved to the library.
+  shareId?: string | null;
 };
 
 function draftKey(recipeId: string) {
@@ -17,12 +20,14 @@ export function savePendingImportDraft(
   recipe: RecipeData,
   sourceURL: string | null,
   themeSeedColors?: RecipeThemeSeedColors | null,
+  shareId?: string | null,
 ): void {
   try {
     sessionStorage.setItem(draftKey(recipeId), JSON.stringify({
       recipe,
       sourceURL,
       themeSeedColors: themeSeedColors ?? null,
+      shareId: shareId ?? null,
     }));
   } catch {
     // sessionStorage unavailable (private browsing quota, etc.) — import will fall back to immediate save

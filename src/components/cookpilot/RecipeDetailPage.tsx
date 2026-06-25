@@ -86,8 +86,9 @@ import { recordRecipeViewedAt } from "@/lib/cookpilot/recentlyViewed";
 import { proxiedExternalCoverUrl } from "@/lib/cookpilot/resolveRecipeCoverUrl";
 import { useResolvedRecipeCoverSrc } from "@/lib/cookpilot/useResolvedRecipeCoverSrc";
 import { queueRecipeDeletedToast } from "@/lib/cookpilot/recipeDeletedToast";
-import { editRecipe, createShareLink, deleteShareLink } from "@/lib/cookpilot/functions";
-import { buildShareLinkPayload } from "@/lib/cookpilot/sharedRecipe";
+import { requestAnonymousSyncPrompt } from "@/lib/cookpilot/anonymousSyncPrompt";
+import { editRecipe, commitShareLink, recordShareImport } from "@/lib/cookpilot/functions";
+import { buildShareLinkPayload, newShareId } from "@/lib/cookpilot/sharedRecipe";
 import { defaultAIEditSuggestions } from "@/lib/cookpilot/editSuggestions";
 import { knownTagsFromRecipes } from "@/lib/cookpilot/recipeBrowse";
 import { getRecipesBrowseSessionCache, removeRecipeFromBrowseSessionCache, syncSavedRecipeToBrowseSessionCache, updateRecipeSummaryInBrowseSessionCache, upsertSavedRecipeInBrowseSessionCache } from "@/lib/cookpilot/recipesBrowseSessionCache";
@@ -490,7 +491,7 @@ function themeExtractionImageUrl(
 
 export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: string; isDraft?: boolean }) {
   const router = useRouter();
-  const { user, status } = useAuth();
+  const { ensureAnonymousUser, user, status } = useAuth();
   const { isSubscribed, refreshSubscriptionStatus } = useSubscription();
   const instructionDragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -530,6 +531,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   // True while the recipe exists only in sessionStorage (not yet saved to Firestore).
   // Flips to false on the first Save, which triggers the Firestore subscription.
   const [isPendingDraft, setIsPendingDraft] = useState(isDraft);
+  // shareId this draft was imported from, recorded as an import once it's saved.
+  // A ref (not state) since it never affects rendering, only the save handler.
+  const importShareIdRef = useRef<string | null>(null);
   const [newTag, setNewTag] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [allKnownTags, setAllKnownTags] = useState<string[]>([]);
@@ -616,8 +620,15 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
 
   useEffect(() => {
     if (status !== "signedOut") return;
+    if (isPendingDraft) {
+      void ensureAnonymousUser().catch((error) => {
+        console.error(error);
+        router.replace("/recipes");
+      });
+      return;
+    }
     router.replace("/recipes");
-  }, [router, status]);
+  }, [ensureAnonymousUser, isPendingDraft, router, status]);
 
   useEffect(() => {
     if (!user || isPendingDraft) return;
@@ -688,7 +699,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   // Initialize recipe from sessionStorage when navigating here right after import.
   // The recipe isn't in Firestore yet — that first write happens on Save.
   useEffect(() => {
-    if (!isPendingDraft || !user) return;
+    if (!isPendingDraft) return;
     const draft = loadPendingImportDraft(recipeId);
     if (!draft) {
       router.replace("/recipes");
@@ -700,11 +711,12 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       sourceURL: draft.sourceURL,
       themeSeedColors: draft.themeSeedColors,
     });
+    importShareIdRef.current = draft.shareId ?? null;
     setSelectedRecipe(pending);
     setEditDraft(normalizedEditableDraft(pending));
     setIsEditingRecipe(true);
     setLoadingRecipeDetail(false);
-  }, [isPendingDraft, recipeId, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isPendingDraft, recipeId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user) return;
@@ -883,6 +895,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     await saveRecipe(userId, updatedRecipe);
     setSelectedRecipe(updatedRecipe);
     syncSavedRecipeToBrowseSessionCache(userId, updatedRecipe);
+    requestAnonymousSyncPrompt(user);
   }
 
   const scaledRecipe = useMemo(() => {
@@ -1079,7 +1092,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   }
 
   async function handleSaveManualEdit() {
-    if (!user || !selectedRecipe || !editDraft) return;
+    if (!selectedRecipe || !editDraft) return;
 
     const recipe = renumberInstructions({
       ...editDraft.recipe,
@@ -1111,6 +1124,9 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     setSaveEditError(null);
 
     try {
+      const activeUser = user ?? (isPendingDraft ? await ensureAnonymousUser() : null);
+      if (!activeUser) return;
+
       const updatedRecipe = buildSavedRecipe({
         id: selectedRecipe.id,
         recipe: {
@@ -1130,12 +1146,17 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
         themeSeedColors: selectedRecipe.themeSeedColors,
       });
 
-      await persistRecipe(user.uid, updatedRecipe);
+      await persistRecipe(activeUser.uid, updatedRecipe);
 
       if (isPendingDraft) {
         clearPendingImportDraft(recipeId);
+        if (importShareIdRef.current) {
+          // Best-effort; never block the save on recording the import.
+          void recordShareImport(importShareIdRef.current);
+          importShareIdRef.current = null;
+        }
         const importedAt = recordRecipeViewedAt(updatedRecipe.id);
-        upsertSavedRecipeInBrowseSessionCache(user.uid, updatedRecipe, { viewedAt: importedAt });
+        upsertSavedRecipeInBrowseSessionCache(activeUser.uid, updatedRecipe, { viewedAt: importedAt });
         setIsPendingDraft(false);
         router.replace(`/recipes/${recipeId}`, { scroll: false });
       }
@@ -1416,31 +1437,37 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     const title = selectedRecipe.recipe.title?.trim() || "Recipe";
     setShareStatus(null);
 
-    let shareId: string | null = null;
-
     try {
+      // Reserve the id client-side so we can build the link up front and only
+      // commit the doc once the share actually completes (mirrors iOS).
       const payload = buildShareLinkPayload(selectedRecipe.recipe, selectedRecipe.sourceURL);
-      const shareLink = await createShareLink({
-        recipeTitle: title,
-        recipe: payload,
-        sourceURL: selectedRecipe.sourceURL ?? null,
-        imageURL: selectedRecipe.recipe.imageURL ?? null,
-      });
-      shareId = shareLink.shareId;
-      const text = `Check out ${title} on CookPilot:\n${shareLink.shareURL}`;
+      const shareId = newShareId();
+      const shareURL = `https://app.cookpilotapp.com/r/${shareId}`;
+      const text = `Check out ${title} on CookPilot:\n${shareURL}`;
+
+      const commit = () =>
+        commitShareLink({
+          shareId,
+          recipeTitle: title,
+          recipe: payload,
+          sourceURL: selectedRecipe.sourceURL ?? null,
+          imageURL: selectedRecipe.recipe.imageURL ?? null,
+        });
 
       if (navigator.share) {
-        await navigator.share({ title, text, url: shareLink.shareURL });
+        // The doc must exist before the share sheet hands off the URL, but a
+        // cancelled share (AbortError) skips the commit, leaving no orphan doc.
+        await navigator.share({ title, text, url: shareURL });
+        await commit();
         return;
       }
 
+      await commit();
       await navigator.clipboard.writeText(text);
       setShareStatus("Recipe link copied to clipboard.");
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        if (shareId) {
-          await deleteShareLink(shareId);
-        }
+        // User dismissed the share sheet — nothing was written, nothing to clean up.
         return;
       }
 

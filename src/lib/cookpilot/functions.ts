@@ -115,20 +115,21 @@ const checkUserProvidersCallable = httpsCallable<
   { providers: string[] | null }
 >(functions, "checkUserProviders");
 
-const createShareLinkCallable = httpsCallable<
+const commitShareLinkCallable = httpsCallable<
   {
+    shareId: string;
     recipeTitle: string;
     recipe: SharedRecipePayload;
     sourceURL?: string | null;
     imageURL?: string | null;
   },
   ShareLinkResult
->(functions, "createShareLink");
+>(functions, "commitShareLink");
 
-const deleteShareLinkCallable = httpsCallable<
+const recordShareImportCallable = httpsCallable<
   { shareId: string },
   { success: boolean }
->(functions, "deleteShareLink");
+>(functions, "recordShareImport");
 
 /** URL import — same callable iOS uses via `RecipeParserService`. */
 export async function parseRecipeFromURL(
@@ -237,13 +238,20 @@ export async function checkUserProviders(email: string): Promise<string[] | null
   return result.data.providers;
 }
 
-export async function createShareLink(params: {
+/**
+ * Persists a share doc using a client-reserved id after the user completes the
+ * share action. Mirrors iOS `commitShareLink` — no Firestore write happens until
+ * the share is actually committed, so abandoned shares leave no orphan docs.
+ */
+export async function commitShareLink(params: {
+  shareId: string;
   recipeTitle: string;
   recipe: SharedRecipePayload;
   sourceURL?: string | null;
   imageURL?: string | null;
 }): Promise<ShareLinkResult> {
-  const result = await createShareLinkCallable({
+  const result = await commitShareLinkCallable({
+    shareId: params.shareId,
     recipeTitle: params.recipeTitle,
     recipe: params.recipe,
     ...(params.sourceURL ? { sourceURL: params.sourceURL } : {}),
@@ -252,11 +260,15 @@ export async function createShareLink(params: {
   return result.data;
 }
 
-export async function deleteShareLink(shareId: string): Promise<void> {
+/**
+ * Records that the current user imported a shared recipe. Best-effort — a failure
+ * here must never block the import itself.
+ */
+export async function recordShareImport(shareId: string): Promise<void> {
   if (!shareId.trim()) return;
   try {
-    await deleteShareLinkCallable({ shareId });
+    await recordShareImportCallable({ shareId });
   } catch (error) {
-    console.error("[ShareLink] deleteShareLink failed", error);
+    console.error("[ShareLink] recordShareImport failed", error);
   }
 }

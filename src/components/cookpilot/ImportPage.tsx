@@ -15,7 +15,7 @@ import { proxiedExternalCoverUrl } from "@/lib/cookpilot/resolveRecipeCoverUrl";
 import { parseRecipeFromImages } from "@/lib/cookpilot/functions";
 import { SocialImportTrace } from "@/lib/cookpilot/socialImportTrace";
 import { detectSocialPlatform } from "@/lib/cookpilot/socialPlatform";
-import { parseCookPilotShareId, resolveSharedRecipeImport, importLegacySharedRecipe } from "@/lib/cookpilot/sharedRecipe";
+import { parseCookPilotShareKey, resolveSharedRecipeImport, importLegacySharedRecipe } from "@/lib/cookpilot/sharedRecipe";
 import type { RecipeThemeSeedColors } from "@/lib/cookpilot/types";
 
 type ImportMode = "url" | "image";
@@ -107,9 +107,9 @@ export function ImportRecipePanel({
       const activeUser = user ?? await ensureAnonymousUser();
       const userId = activeUser.uid;
       const trimmedURL = url.trim();
-      const shareId = parseCookPilotShareId(trimmedURL);
-      if (shareId) {
-        const resolved = await resolveSharedRecipeImport(shareId);
+      const shareKey = parseCookPilotShareKey(trimmedURL);
+      if (shareKey) {
+        const resolved = await resolveSharedRecipeImport(shareKey);
         if (!resolved) {
           throw new Error("Shared recipe not found");
         }

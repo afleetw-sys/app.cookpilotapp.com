@@ -32,7 +32,10 @@ import type {
   SavedRecipe,
 } from "@/lib/cookpilot/types";
 import { totalTimeMinutes } from "@/lib/cookpilot/timeFormatting";
-import { getStoredAttribution } from "@/lib/cookpilot/attribution";
+import {
+  clearStoredAttribution,
+  getStoredAttribution,
+} from "@/lib/cookpilot/attribution";
 
 const COLLECTIONS = {
   users: "users",
@@ -82,6 +85,23 @@ function recipeVersionsCollection(userId: string, recipeId: string) {
     recipeId,
     COLLECTIONS.versions,
   );
+}
+
+function storedAttributionForFirestore(): Record<string, string | null> | null {
+  const attribution = getStoredAttribution();
+  if (
+    !attribution ||
+    (!attribution.utm_source && !attribution.utm_medium && !attribution.utm_campaign)
+  ) {
+    return null;
+  }
+
+  return {
+    utmSource: attribution.utm_source,
+    utmMedium: attribution.utm_medium,
+    utmCampaign: attribution.utm_campaign,
+    firstTouchAt: attribution.first_touch_at,
+  };
 }
 
 export function decodeRecipeSummary(snapshot: QueryDocumentSnapshot<DocumentData>): RecipeSummary {
@@ -184,6 +204,7 @@ export async function createUserDocument(params: {
   isAnonymous: boolean;
 }) {
   const userRef = doc(db, COLLECTIONS.users, params.userId);
+  const storedAttribution = storedAttributionForFirestore();
 
   await runTransaction(db, async (transaction) => {
     const existing = await transaction.get(userRef);
@@ -215,17 +236,8 @@ export async function createUserDocument(params: {
     // anonymous-account merge, so attribution captured on the anonymous landing
     // session carries through to the real account it is claimed by.
     if (!data.attribution) {
-      const attribution = getStoredAttribution();
-      if (
-        attribution &&
-        (attribution.utm_source || attribution.utm_medium || attribution.utm_campaign)
-      ) {
-        update.attribution = {
-          utmSource: attribution.utm_source,
-          utmMedium: attribution.utm_medium,
-          utmCampaign: attribution.utm_campaign,
-          firstTouchAt: attribution.first_touch_at,
-        };
+      if (storedAttribution) {
+        update.attribution = storedAttribution;
       }
     }
 
@@ -239,6 +251,27 @@ export async function createUserDocument(params: {
 
     transaction.set(userRef, update, { merge: true });
   });
+
+  if (storedAttribution) {
+    clearStoredAttribution();
+  }
+}
+
+export async function persistStoredAttributionToUserDocument(userId: string): Promise<void> {
+  if (!userId.trim()) return;
+
+  const attribution = storedAttributionForFirestore();
+  if (!attribution) return;
+
+  const userRef = doc(db, COLLECTIONS.users, userId);
+  const existing = await getDoc(userRef);
+  if (!existing.exists()) return;
+
+  if (!existing.data()?.attribution) {
+    await setDoc(userRef, { attribution }, { merge: true });
+  }
+
+  clearStoredAttribution();
 }
 
 export async function updateUserSessionMetadataIfNeeded(userId: string): Promise<void> {
