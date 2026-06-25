@@ -45,6 +45,16 @@ export function getStoredAttribution(): StoredAttribution | null {
   }
 }
 
+export function clearStoredAttribution(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.removeItem(ATTRIBUTION_STORAGE_KEY);
+  } catch {
+    // Best-effort only; storage may be unavailable.
+  }
+}
+
 /**
  * Records first-touch UTM attribution from a URL query string (defaults to the
  * current page's). No-op if attribution was already captured, or if this visit

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import {
   captureAttributionFromUrl,
   stripUtmParamsFromUrl,
 } from "@/lib/cookpilot/attribution";
+import { persistStoredAttributionToUserDocument } from "@/lib/cookpilot/firestore";
+import { auth } from "@/lib/firebase/client";
 
 // Delay (ms) after page load before stripping UTM params, giving analytics
 // (e.g. GA's automatic page_view, which fires on load) time to read the
@@ -21,6 +24,22 @@ export function AttributionTracker() {
     captureAttributionFromUrl();
 
     let timer: number | undefined;
+    let cancelled = false;
+
+    const persistAttribution = (userId: string | undefined) => {
+      if (!userId) return;
+      void persistStoredAttributionToUserDocument(userId).catch((error) => {
+        if (!cancelled) {
+          console.error("[Attribution] Failed to persist first-touch attribution", error);
+        }
+      });
+    };
+
+    persistAttribution(auth.currentUser?.uid);
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      persistAttribution(user?.uid);
+    });
 
     const scheduleCleanup = () => {
       timer = window.setTimeout(stripUtmParamsFromUrl, UTM_CLEANUP_DELAY_MS);
@@ -35,8 +54,10 @@ export function AttributionTracker() {
     }
 
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
       window.removeEventListener("load", scheduleCleanup);
+      unsubscribeAuth();
     };
   }, []);
 
