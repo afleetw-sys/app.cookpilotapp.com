@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StateBlock } from "@/components/ui/StateBlock";
-import { IMPORT_DRAFT_SEARCH_PARAM } from "@/lib/cookpilot/importDraft";
+import { IMPORT_DRAFT_SEARCH_PARAM, SHARED_IMPORT_SEARCH_PARAM } from "@/lib/cookpilot/importDraft";
 import {
   importLegacySharedRecipe,
   resolveSharedRecipeImport,
@@ -31,13 +31,17 @@ export function SharedRecipeImportPage({ shareKey }: { shareKey: string }) {
         }
 
         if (resolved.kind === "snapshot") {
-          router.replace(`/recipes/${resolved.recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1`);
+          router.replace(
+            `/recipes/${resolved.recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1&${SHARED_IMPORT_SEARCH_PARAM}=1`,
+          );
           return;
         }
 
         const recipeId = await importLegacySharedRecipe(resolved.sourceURL);
         if (cancelled) return;
-        router.replace(`/recipes/${recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1`);
+        router.replace(
+          `/recipes/${recipeId}?${IMPORT_DRAFT_SEARCH_PARAM}=1&${SHARED_IMPORT_SEARCH_PARAM}=1`,
+        );
       } catch (error) {
         console.error(error);
         if (!cancelled) {

@@ -2,6 +2,11 @@ import type { RecipeData, RecipeThemeSeedColors } from "@/lib/cookpilot/types";
 
 export const IMPORT_DRAFT_SEARCH_PARAM = "draft";
 
+// Marks a draft that arrived from a shared/referral link (cookpilotapp.com/r/...).
+// These recipes come over complete, so the detail page saves them immediately and
+// lands the user in view state instead of edit mode. URL-paste imports omit this.
+export const SHARED_IMPORT_SEARCH_PARAM = "fromShare";
+
 type ImportDraftPayload = {
   recipe: RecipeData;
   sourceURL: string | null;

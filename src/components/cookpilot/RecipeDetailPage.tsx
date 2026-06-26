@@ -489,7 +489,15 @@ function themeExtractionImageUrl(
   return null;
 }
 
-export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: string; isDraft?: boolean }) {
+export function RecipeDetailPage({
+  recipeId,
+  isDraft = false,
+  isSharedImport = false,
+}: {
+  recipeId: string;
+  isDraft?: boolean;
+  isSharedImport?: boolean;
+}) {
   const router = useRouter();
   const { ensureAnonymousUser, user, status } = useAuth();
   const { isSubscribed, refreshSubscriptionStatus } = useSubscription();
@@ -712,6 +720,48 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       themeSeedColors: draft.themeSeedColors,
     });
     importShareIdRef.current = draft.shareId ?? null;
+
+    // Shared/referral imports arrive as a complete recipe — save them straight
+    // away and land the user in view state. Dropping into edit mode for a recipe
+    // someone else already finished is jarring. URL-paste imports (no fromShare
+    // flag) still open in edit mode for review before the first save.
+    if (isSharedImport) {
+      let cancelled = false;
+      void (async () => {
+        try {
+          const activeUser = user ?? (await ensureAnonymousUser());
+          if (cancelled || !activeUser) return;
+          await persistRecipe(activeUser.uid, pending);
+          if (cancelled) return;
+          clearPendingImportDraft(recipeId);
+          if (importShareIdRef.current) {
+            // Best-effort; never block the import on recording attribution.
+            void recordShareImport(importShareIdRef.current);
+            importShareIdRef.current = null;
+          }
+          const importedAt = recordRecipeViewedAt(pending.id);
+          upsertSavedRecipeInBrowseSessionCache(activeUser.uid, pending, { viewedAt: importedAt });
+          setSelectedRecipe(pending);
+          setCheckedIngredientIndices(pending.checkedIngredientIndices ?? []);
+          setIsPendingDraft(false);
+          setLoadingRecipeDetail(false);
+          // Drop the import params so a refresh loads the saved recipe normally.
+          router.replace(`/recipes/${recipeId}`, { scroll: false });
+        } catch (error) {
+          console.error(error);
+          if (cancelled) return;
+          // Saving failed — fall back to edit mode so the user can retry.
+          setSelectedRecipe(pending);
+          setEditDraft(normalizedEditableDraft(pending));
+          setIsEditingRecipe(true);
+          setLoadingRecipeDetail(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setSelectedRecipe(pending);
     setEditDraft(normalizedEditableDraft(pending));
     setIsEditingRecipe(true);
