@@ -95,6 +95,7 @@ export type SavedRecipe = {
   ingredientNames: string[];
   totalTimeMinutes?: number | null;
   themeSeedColors?: RecipeThemeSeedColors | null;
+  importNotice?: string | null;
 };
 
 export type RecipePageCursor = {

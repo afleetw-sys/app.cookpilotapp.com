@@ -49,6 +49,10 @@ const DOCUMENTS = {
 };
 
 const LAST_ACTIVE_GATE_MS = 24 * 60 * 60 * 1000;
+const WEB_APP_VERSION =
+  process.env.NEXT_PUBLIC_APP_VERSION ??
+  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ??
+  "web";
 
 function asDate(value: unknown): Date {
   if (value instanceof Timestamp) return value.toDate();
@@ -210,8 +214,14 @@ export async function createUserDocument(params: {
     const existing = await transaction.get(userRef);
     const data = existing.data() ?? {};
     const update: Record<string, unknown> = {
+      uid: params.userId,
       providers: arrayUnion(params.provider),
       platformsUsed: arrayUnion("web"),
+      appVersion: WEB_APP_VERSION,
+      "appVersions.web": WEB_APP_VERSION,
+      lastAuthProvider: params.provider,
+      lastAuthPlatform: "web",
+      userType: params.isAnonymous ? "anonymous" : "authenticated",
     };
 
     if (params.email) {
@@ -286,7 +296,12 @@ export async function updateUserSessionMetadataIfNeeded(userId: string): Promise
 
   await setDoc(
     doc(db, COLLECTIONS.users, userId),
-    { lastActive: serverTimestamp() },
+    {
+      lastActive: serverTimestamp(),
+      appVersion: WEB_APP_VERSION,
+      "appVersions.web": WEB_APP_VERSION,
+      lastActivePlatform: "web",
+    },
     { merge: true },
   );
   window.localStorage.setItem(storageKey, String(now));

@@ -1,5 +1,8 @@
 import { RecipeDetailPage } from "@/components/cookpilot/RecipeDetailPage";
-import { IMPORT_DRAFT_SEARCH_PARAM } from "@/lib/cookpilot/importDraft";
+import {
+  IMPORT_DRAFT_SEARCH_PARAM,
+  SHARED_IMPORT_SEARCH_PARAM,
+} from "@/lib/cookpilot/importDraft";
 
 export default async function RecipeDetailRoute({
   params,
@@ -10,6 +13,9 @@ export default async function RecipeDetailRoute({
 }) {
   const [{ recipeId }, sp] = await Promise.all([params, searchParams]);
   const isDraft = sp[IMPORT_DRAFT_SEARCH_PARAM] === "1";
+  const isSharedImport = sp[SHARED_IMPORT_SEARCH_PARAM] === "1";
 
-  return <RecipeDetailPage recipeId={recipeId} isDraft={isDraft} />;
+  return (
+    <RecipeDetailPage recipeId={recipeId} isDraft={isDraft} isSharedImport={isSharedImport} />
+  );
 }

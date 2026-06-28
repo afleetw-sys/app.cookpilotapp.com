@@ -11,15 +11,16 @@ import { extractThemeSeedColors } from "@/lib/cookpilot/extractTheme";
 import { isFirebaseStorageURL, migrateExternalImageToFirebaseStorage, uploadRecipeImage } from "@/lib/cookpilot/imageStorage";
 import { IMPORT_DRAFT_SEARCH_PARAM, savePendingImportDraft } from "@/lib/cookpilot/importDraft";
 import { importRecipeFromURL } from "@/lib/cookpilot/importRecipe";
-import { proxiedExternalCoverUrl } from "@/lib/cookpilot/resolveRecipeCoverUrl";
-import { parseRecipeFromImages } from "@/lib/cookpilot/functions";
+import { parseRecipeFromImages, recordOperationalEvent } from "@/lib/cookpilot/functions";
 import { SocialImportTrace } from "@/lib/cookpilot/socialImportTrace";
 import { detectSocialPlatform } from "@/lib/cookpilot/socialPlatform";
 import { parseCookPilotShareKey, resolveSharedRecipeImport, importLegacySharedRecipe } from "@/lib/cookpilot/sharedRecipe";
-import type { RecipeThemeSeedColors } from "@/lib/cookpilot/types";
+import type { RecipeData, RecipeThemeSeedColors } from "@/lib/cookpilot/types";
 
 type ImportMode = "url" | "image";
 const THEME_EXTRACTION_TIMEOUT_MS = 4_500;
+const URL_IMPORT_FALLBACK_NOTICE =
+  "We couldn't pull the recipe details from this link yet. We've logged it for review, and you can enter the recipe here while we look into it.";
 
 function readImageAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -46,18 +47,79 @@ function imageFilesFromList(files: FileList | null): File[] {
   return Array.from(files ?? []).filter((file) => file.type.startsWith("image/"));
 }
 
-function imageUrlForThemeExtraction(imageURL: string | null | undefined): string | null {
-  const trimmed = imageURL?.trim();
-  if (!trimmed?.startsWith("http")) return null;
-  return isFirebaseStorageURL(trimmed) ? trimmed : proxiedExternalCoverUrl(trimmed);
+function recipeIsBlank(recipe: RecipeData): boolean {
+  const ingredientCount = recipe.ingredientSections.reduce(
+    (count, section) => count + section.ingredients.filter((ingredient) => ingredient.name.trim()).length,
+    0,
+  );
+  const instructionCount = recipe.instructionSections.reduce(
+    (count, section) => count + section.instructions.filter((instruction) => instruction.text.trim()).length,
+    0,
+  );
+
+  return ingredientCount === 0 && instructionCount === 0;
 }
 
-async function extractThemeSeedColorsForImport(
-  imageURL: string | null | undefined,
-): Promise<RecipeThemeSeedColors | null> {
-  const extractionURL = imageUrlForThemeExtraction(imageURL);
-  if (!extractionURL) return null;
-  return extractThemeSeedColorsWithTimeout(extractionURL);
+function importErrorCode(error: unknown): string {
+  const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const code = typeof record.code === "string" ? record.code : "";
+  if (code) return code.replace(/^functions\//, "");
+  if (error instanceof Error && error.name) return error.name;
+  return "unknown";
+}
+
+async function recordTerminalURLImportFailure(params: {
+  url: string;
+  durationMs: number;
+  failureStep: string;
+  errorCode: string;
+}): Promise<void> {
+  try {
+    const socialPlatform = detectSocialPlatform(params.url);
+    await recordOperationalEvent({
+      kind: socialPlatform ? "social_import" : "url_import",
+      outcome: "failed",
+      durationMs: params.durationMs,
+      importURL: params.url,
+      platform: socialPlatform ?? "web",
+      failureStep: params.failureStep,
+      errorCode: params.errorCode,
+      appPlatform: "web",
+      createDebugInboxItem: true,
+    });
+  } catch (reportingError) {
+    console.error("[Import] recordOperationalEvent failed", reportingError);
+  }
+}
+
+function importErrorMessage(error: unknown): string {
+  const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const code = typeof record.code === "string" ? record.code : "";
+  const message = error instanceof Error ? error.message : String(error);
+  const lowerMessage = message.toLowerCase();
+
+  if (
+    code.includes("failed-precondition") ||
+    lowerMessage.includes("bot challenge") ||
+    lowerMessage.includes("gated")
+  ) {
+    return "That site is blocking server-side recipe import. Try image import for now while we improve web fallback coverage.";
+  }
+
+  if (code.includes("not-found") || lowerMessage.includes("no recipe")) {
+    return "We couldn't find a recipe on that page.";
+  }
+
+  if (
+    code.includes("deadline-exceeded") ||
+    code.includes("unavailable") ||
+    lowerMessage.includes("timed out") ||
+    lowerMessage.includes("failed to fetch")
+  ) {
+    return "We couldn't reach that recipe page from the web importer.";
+  }
+
+  return "We couldn't import a recipe from that URL.";
 }
 
 async function extractThemeSeedColorsWithTimeout(
@@ -100,8 +162,9 @@ export function ImportRecipePanel({
 
     setLoading(true);
     setError(null);
-
-    let fallbackDraftURL: string | null = null;
+    const parseStartedAt = performance.now();
+    let shouldFallbackToManualDraft = false;
+    let fallbackURL = "";
 
     try {
       const activeUser = user ?? await ensureAnonymousUser();
@@ -124,7 +187,8 @@ export function ImportRecipePanel({
         return;
       }
 
-      fallbackDraftURL = trimmedURL;
+      shouldFallbackToManualDraft = true;
+      fallbackURL = trimmedURL;
       const imported = await importRecipeFromURL(trimmedURL);
       const recipeId = crypto.randomUUID();
 
@@ -132,7 +196,6 @@ export function ImportRecipePanel({
       // before storing the draft so the pending recipe already holds a permanent URL.
       // Regular recipe site thumbnails are stable links and are stored as-is.
       let recipeData = imported.recipe;
-      const originalParsedImageURL = recipeData.imageURL;
       const isSocialURL = detectSocialPlatform(trimmedURL) !== null;
       if (isSocialURL && recipeData.imageURL && !isFirebaseStorageURL(recipeData.imageURL)) {
         const mirrored = await migrateExternalImageToFirebaseStorage(userId, recipeId, recipeData.imageURL);
@@ -141,34 +204,51 @@ export function ImportRecipePanel({
         }
       }
 
-      const themeSeedColors =
-        await extractThemeSeedColorsForImport(recipeData.imageURL) ??
-        await extractThemeSeedColorsForImport(originalParsedImageURL);
-
       if (SocialImportTrace.lastCompletedImportSessionIDValue) {
         console.info(
           `[SocialImport] importSessionLinkedToRecipe importSessionID=${SocialImportTrace.lastCompletedImportSessionIDValue} recipeId=${recipeId} finalParserSource=${imported.finalParserSource}`,
         );
       }
 
+      const fallbackNotice = recipeIsBlank(recipeData) ? URL_IMPORT_FALLBACK_NOTICE : null;
+      if (fallbackNotice) {
+        await recordTerminalURLImportFailure({
+          url: trimmedURL,
+          durationMs: Math.round(performance.now() - parseStartedAt),
+          failureStep: "empty_recipe",
+          errorCode: "empty_recipe",
+        });
+      }
+
       // Store the parsed recipe as a pending draft. The detail page will open in edit
       // mode so the user can review before the first Firestore write happens.
-      savePendingImportDraft(recipeId, recipeData, trimmedURL, themeSeedColors);
+      // Theme colors are extracted lazily on the detail page (mirrors iOS) so the
+      // import isn't blocked on downloading and processing the cover image.
+      savePendingImportDraft(recipeId, recipeData, trimmedURL, undefined, undefined, fallbackNotice);
 
       openDraft(recipeId);
     } catch (nextError) {
       console.error(nextError);
-      if (fallbackDraftURL) {
+      if (shouldFallbackToManualDraft && fallbackURL) {
+        await recordTerminalURLImportFailure({
+          url: fallbackURL,
+          durationMs: Math.round(performance.now() - parseStartedAt),
+          failureStep: "url_parsing",
+          errorCode: importErrorCode(nextError),
+        });
         const recipeId = crypto.randomUUID();
         savePendingImportDraft(
           recipeId,
           { ingredientSections: [], instructionSections: [], servings: 1 },
-          fallbackDraftURL,
+          fallbackURL,
+          undefined,
+          undefined,
+          URL_IMPORT_FALLBACK_NOTICE,
         );
         openDraft(recipeId);
         return;
       }
-      setError("We couldn't import a recipe from that URL.");
+      setError(importErrorMessage(nextError));
       setLoading(false);
     }
   }

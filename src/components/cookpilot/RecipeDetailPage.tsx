@@ -489,7 +489,15 @@ function themeExtractionImageUrl(
   return null;
 }
 
-export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: string; isDraft?: boolean }) {
+export function RecipeDetailPage({
+  recipeId,
+  isDraft = false,
+  isSharedImport = false,
+}: {
+  recipeId: string;
+  isDraft?: boolean;
+  isSharedImport?: boolean;
+}) {
   const router = useRouter();
   const { ensureAnonymousUser, user, status } = useAuth();
   const { isSubscribed, refreshSubscriptionStatus } = useSubscription();
@@ -711,7 +719,50 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       sourceURL: draft.sourceURL,
       themeSeedColors: draft.themeSeedColors,
     });
+    pending.importNotice = draft.notice ?? null;
     importShareIdRef.current = draft.shareId ?? null;
+
+    // Shared/referral imports arrive as a complete recipe — save them straight
+    // away and land the user in view state. Dropping into edit mode for a recipe
+    // someone else already finished is jarring. URL-paste imports (no fromShare
+    // flag) still open in edit mode for review before the first save.
+    if (isSharedImport) {
+      let cancelled = false;
+      void (async () => {
+        try {
+          const activeUser = user ?? (await ensureAnonymousUser());
+          if (cancelled || !activeUser) return;
+          await persistRecipe(activeUser.uid, pending);
+          if (cancelled) return;
+          clearPendingImportDraft(recipeId);
+          if (importShareIdRef.current) {
+            // Best-effort; never block the import on recording attribution.
+            void recordShareImport(importShareIdRef.current);
+            importShareIdRef.current = null;
+          }
+          const importedAt = recordRecipeViewedAt(pending.id);
+          upsertSavedRecipeInBrowseSessionCache(activeUser.uid, pending, { viewedAt: importedAt });
+          setSelectedRecipe(pending);
+          setCheckedIngredientIndices(pending.checkedIngredientIndices ?? []);
+          setIsPendingDraft(false);
+          setLoadingRecipeDetail(false);
+          // Drop the import params so a refresh loads the saved recipe normally.
+          router.replace(`/recipes/${recipeId}`, { scroll: false });
+        } catch (error) {
+          console.error(error);
+          if (cancelled) return;
+          // Saving failed — fall back to edit mode so the user can retry.
+          setSelectedRecipe(pending);
+          setEditDraft(normalizedEditableDraft(pending));
+          setIsEditingRecipe(true);
+          setLoadingRecipeDetail(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
     setSelectedRecipe(pending);
     setEditDraft(normalizedEditableDraft(pending));
     setIsEditingRecipe(true);
@@ -771,10 +822,15 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
     };
   }, [localImagePreview]);
 
-  // Extract palette from the recipe image if not yet available (mirrors iOS lazy extraction on view load)
+  // Extract palette from the recipe image if not yet available (mirrors iOS lazy extraction
+  // on view load). Imported drafts open straight into edit mode, so we also extract while
+  // editing a pending draft — that's what lets the theme tint in right after the cover image
+  // loads (e.g. opening a shared recipe link). For an already-saved recipe being edited we
+  // skip, since the image may be mid-change.
   useEffect(() => {
     if (!user || !selectedRecipe) return;
-    if (isEditingRecipe || uploadingImage || localImagePreview) return;
+    if (uploadingImage || localImagePreview) return;
+    if (isEditingRecipe && !isPendingDraft) return;
     if (selectedRecipe.themeSeedColors) return;
     const imageUrl = themeExtractionImageUrl(selectedRecipe.recipe.imageURL, resolvedDetailImageSrc);
     if (!imageUrl) return;
@@ -787,11 +843,15 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
       setSelectedRecipe((current) =>
         current?.id === recipeId ? { ...current, themeSeedColors: seed } : current,
       );
-      void updateThemeSeedColors(userId, recipeId, seed);
+      // A pending draft has no Firestore doc yet — the seed rides on the in-memory recipe
+      // and is persisted by the first Save. Only write through for already-saved recipes.
+      if (!isPendingDraft) {
+        void updateThemeSeedColors(userId, recipeId, seed);
+      }
     });
 
     return () => { cancelled = true; };
-  }, [user, selectedRecipe, recipeId, isEditingRecipe, uploadingImage, localImagePreview, resolvedDetailImageSrc]);
+  }, [user, selectedRecipe, recipeId, isEditingRecipe, isPendingDraft, uploadingImage, localImagePreview, resolvedDetailImageSrc]);
 
   async function handleDeleteRecipe() {
     if (deletingRecipe) return;
@@ -1507,6 +1567,7 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
   const hasDetailImage = Boolean(resolvedDetailImageSrc) && !detailImageFailed;
   const displayedRecipe = isEditingRecipe && editDraft ? editDraft.recipe : scaledRecipe;
   const baseRecipe = isEditingRecipe && editDraft ? editDraft.recipe : selectedRecipe.recipe;
+  const importNotice = selectedRecipe.importNotice ?? null;
   const aiEditSuggestions = defaultAIEditSuggestions(baseRecipe, {
     sourceURL: selectedRecipe.sourceURL,
   });
@@ -1622,6 +1683,11 @@ export function RecipeDetailPage({ recipeId, isDraft = false }: { recipeId: stri
           )}
         </div>
       </div>
+      {importNotice ? (
+        <div className="cp-detail__import-notice">
+          <StateBlock title="Import needs a hand" message={importNotice} />
+        </div>
+      ) : null}
 
       <header
         className={`cp-detail__hero cp-detail__section-surface ${(isEditingRecipe || hasDetailImage) ? "" : "cp-detail__hero--text-only"}`.trim()}

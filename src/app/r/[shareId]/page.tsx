@@ -1,8 +1,15 @@
+import type { Metadata } from "next";
 import { SharedRecipeImportPage } from "@/components/cookpilot/SharedRecipeImportPage";
+import { buildSharedRecipeMetadata } from "@/lib/cookpilot/sharedRecipeMetadata";
 
 type SharedRecipeRouteProps = {
   params: Promise<{ shareId: string }>;
 };
+
+export async function generateMetadata({ params }: SharedRecipeRouteProps): Promise<Metadata> {
+  const { shareId } = await params;
+  return buildSharedRecipeMetadata(shareId, "r");
+}
 
 export default async function SharedRecipeShortRoute({ params }: SharedRecipeRouteProps) {
   const { shareId: shareKey } = await params;
