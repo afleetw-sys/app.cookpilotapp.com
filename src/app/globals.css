@@ -2034,6 +2034,15 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   margin-top: 0;
 }
 
+.cp-detail__import-notice {
+  width: min(100%, 920px);
+}
+
+.cp-detail__import-notice .cp-state {
+  border-color: color-mix(in srgb, var(--recipe-current-primary-accent) 22%, var(--cp-line));
+  background: color-mix(in srgb, var(--recipe-current-primary-accent) 8%, var(--cp-card));
+}
+
 .cp-app-shell:has(.cp-detail--page) {
   background: var(--cp-current-page-background);
 }

@@ -131,6 +131,38 @@ const recordShareImportCallable = httpsCallable<
   { success: boolean }
 >(functions, "recordShareImport");
 
+type OperationalEventKind = "editor_edit" | "editor_undo" | "url_import" | "image_import" | "social_import";
+type OperationalOutcome = "applied" | "partial_success" | "rejected" | "refused" | "failed" | "reverted";
+
+export type OperationalEventRequest = {
+  kind: OperationalEventKind;
+  outcome: OperationalOutcome;
+  source?: string | null;
+  primaryAction?: string | null;
+  operationTypes?: string[];
+  editorVersion?: string | null;
+  appVersion?: string | null;
+  appPlatform?: string | null;
+  recipeId?: string | null;
+  versionId?: string | null;
+  durationMs?: number | null;
+  confidence?: string | null;
+  model?: string | null;
+  tokensIn?: number | null;
+  tokensOut?: number | null;
+  importURL?: string | null;
+  storageReference?: string | null;
+  platform?: string | null;
+  failureStep?: string | null;
+  errorCode?: string | null;
+  createDebugInboxItem?: boolean;
+};
+
+const recordOperationalEventCallable = httpsCallable<
+  OperationalEventRequest,
+  { success: boolean; dateKey: string; debugId?: string | null }
+>(functions, "recordOperationalEvent");
+
 /** URL import — same callable iOS uses via `RecipeParserService`. */
 export async function parseRecipeFromURL(
   url: string,
@@ -271,4 +303,8 @@ export async function recordShareImport(shareId: string): Promise<void> {
   } catch (error) {
     console.error("[ShareLink] recordShareImport failed", error);
   }
+}
+
+export async function recordOperationalEvent(event: OperationalEventRequest): Promise<void> {
+  await recordOperationalEventCallable(event);
 }

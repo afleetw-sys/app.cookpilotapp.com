@@ -719,6 +719,7 @@ export function RecipeDetailPage({
       sourceURL: draft.sourceURL,
       themeSeedColors: draft.themeSeedColors,
     });
+    pending.importNotice = draft.notice ?? null;
     importShareIdRef.current = draft.shareId ?? null;
 
     // Shared/referral imports arrive as a complete recipe — save them straight
@@ -821,10 +822,15 @@ export function RecipeDetailPage({
     };
   }, [localImagePreview]);
 
-  // Extract palette from the recipe image if not yet available (mirrors iOS lazy extraction on view load)
+  // Extract palette from the recipe image if not yet available (mirrors iOS lazy extraction
+  // on view load). Imported drafts open straight into edit mode, so we also extract while
+  // editing a pending draft — that's what lets the theme tint in right after the cover image
+  // loads (e.g. opening a shared recipe link). For an already-saved recipe being edited we
+  // skip, since the image may be mid-change.
   useEffect(() => {
     if (!user || !selectedRecipe) return;
-    if (isEditingRecipe || uploadingImage || localImagePreview) return;
+    if (uploadingImage || localImagePreview) return;
+    if (isEditingRecipe && !isPendingDraft) return;
     if (selectedRecipe.themeSeedColors) return;
     const imageUrl = themeExtractionImageUrl(selectedRecipe.recipe.imageURL, resolvedDetailImageSrc);
     if (!imageUrl) return;
@@ -837,11 +843,15 @@ export function RecipeDetailPage({
       setSelectedRecipe((current) =>
         current?.id === recipeId ? { ...current, themeSeedColors: seed } : current,
       );
-      void updateThemeSeedColors(userId, recipeId, seed);
+      // A pending draft has no Firestore doc yet — the seed rides on the in-memory recipe
+      // and is persisted by the first Save. Only write through for already-saved recipes.
+      if (!isPendingDraft) {
+        void updateThemeSeedColors(userId, recipeId, seed);
+      }
     });
 
     return () => { cancelled = true; };
-  }, [user, selectedRecipe, recipeId, isEditingRecipe, uploadingImage, localImagePreview, resolvedDetailImageSrc]);
+  }, [user, selectedRecipe, recipeId, isEditingRecipe, isPendingDraft, uploadingImage, localImagePreview, resolvedDetailImageSrc]);
 
   async function handleDeleteRecipe() {
     if (deletingRecipe) return;
@@ -1557,6 +1567,7 @@ export function RecipeDetailPage({
   const hasDetailImage = Boolean(resolvedDetailImageSrc) && !detailImageFailed;
   const displayedRecipe = isEditingRecipe && editDraft ? editDraft.recipe : scaledRecipe;
   const baseRecipe = isEditingRecipe && editDraft ? editDraft.recipe : selectedRecipe.recipe;
+  const importNotice = selectedRecipe.importNotice ?? null;
   const aiEditSuggestions = defaultAIEditSuggestions(baseRecipe, {
     sourceURL: selectedRecipe.sourceURL,
   });
@@ -1672,6 +1683,11 @@ export function RecipeDetailPage({
           )}
         </div>
       </div>
+      {importNotice ? (
+        <div className="cp-detail__import-notice">
+          <StateBlock title="Import needs a hand" message={importNotice} />
+        </div>
+      ) : null}
 
       <header
         className={`cp-detail__hero cp-detail__section-surface ${(isEditingRecipe || hasDetailImage) ? "" : "cp-detail__hero--text-only"}`.trim()}
