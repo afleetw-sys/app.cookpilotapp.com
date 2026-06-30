@@ -897,7 +897,8 @@ export function RecipeDetailPage({
     try {
       const url = await uploadRecipeImage(user.uid, editDraft.id, file);
       updateDraftRecipe((recipe) => ({ ...recipe, imageURL: url }));
-      setEditDraft((current) => current ? { ...current, sourceURL: current.sourceURL || "photo_upload" } : current);
+      // Invalidate the old palette so it re-extracts from the new image after save.
+      setEditDraft((current) => current ? { ...current, sourceURL: current.sourceURL || "photo_upload", themeSeedColors: null } : current);
       // Keep blob preview so the UI does not depend on the network URL loading during edit.
     } catch (error) {
       console.warn("Upload failed", {
@@ -923,6 +924,8 @@ export function RecipeDetailPage({
     setLocalImagePreview(null);
     setImageUploadError(null);
     updateDraftRecipe((recipe) => ({ ...recipe, imageURL: null, localImagePath: null }));
+    // No image means no palette to derive — drop any stale seed colors.
+    setEditDraft((current) => current ? { ...current, themeSeedColors: null } : current);
   }
 
   function handleEditImagePreviewError() {
@@ -1203,7 +1206,8 @@ export function RecipeDetailPage({
         preferredServings: recipe.servings ?? selectedRecipe.preferredServings,
         checkedIngredientIndices: nextCheckedIngredientIndices,
         preferredIngredientMeasurementRaw: selectedRecipe.preferredIngredientMeasurementRaw,
-        themeSeedColors: selectedRecipe.themeSeedColors,
+        // Source from the draft: an image change clears these, forcing a fresh extract on view.
+        themeSeedColors: editDraft.themeSeedColors,
       });
 
       await persistRecipe(activeUser.uid, updatedRecipe);
