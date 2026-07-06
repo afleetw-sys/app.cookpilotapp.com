@@ -2038,6 +2038,10 @@ html[data-theme="dark"] .cp-recipe-card__tape {
   width: min(100%, 920px);
 }
 
+.cp-detail--page > .cp-detail__import-notice + .cp-detail__hero {
+  margin-top: var(--cp-space-6);
+}
+
 .cp-detail__import-notice .cp-state {
   border-color: color-mix(in srgb, var(--recipe-current-primary-accent) 22%, var(--cp-line));
   background: color-mix(in srgb, var(--recipe-current-primary-accent) 8%, var(--cp-card));
