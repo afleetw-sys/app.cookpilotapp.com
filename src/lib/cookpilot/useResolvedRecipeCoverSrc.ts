@@ -87,6 +87,13 @@ export function useResolvedRecipeCoverSrc(
       return;
     }
 
+    if (cachedResolvedCoverSrc(loadKey)) {
+      // Already resolved this exact recipe/image in this session — no need to
+      // hit Firebase Storage again for a signed URL we already have.
+      loadModeRef.current = "firebase";
+      return;
+    }
+
     let cancelled = false;
 
     void (async () => {

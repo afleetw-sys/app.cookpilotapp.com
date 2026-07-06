@@ -357,7 +357,21 @@ export async function loadRecipePage(
   return { recipes, nextCursor, totalCount: countSnapshot?.data().count ?? null };
 }
 
+const ALL_RECIPE_TAGS_CACHE_TTL_MS = 2 * 60 * 1000;
+const allRecipeTagsCache = new Map<string, { tags: string[]; fetchedAt: number }>();
+
+/**
+ * Scans every recipe doc to build the full tag list (used to show tag filter
+ * chips for recipes the browse grid hasn't paginated in yet). Cached briefly
+ * per user since it's a full-collection read and the tag set rarely changes
+ * within a single session.
+ */
 export async function loadAllRecipeTags(userId: string): Promise<string[]> {
+  const cached = allRecipeTagsCache.get(userId);
+  if (cached && Date.now() - cached.fetchedAt < ALL_RECIPE_TAGS_CACHE_TTL_MS) {
+    return cached.tags;
+  }
+
   const snapshot = await getDocs(recipesCollection(userId));
   const tags = new Set<string>();
 
@@ -375,7 +389,9 @@ export async function loadAllRecipeTags(userId: string): Promise<string[]> {
     });
   });
 
-  return Array.from(tags).sort((a, b) => a.localeCompare(b));
+  const sorted = Array.from(tags).sort((a, b) => a.localeCompare(b));
+  allRecipeTagsCache.set(userId, { tags: sorted, fetchedAt: Date.now() });
+  return sorted;
 }
 
 function assembleSavedRecipe(
@@ -430,12 +446,21 @@ export async function loadRecipe(userId: string, recipeId: string): Promise<Save
   );
 }
 
+/** Kick off the detail-doc read as soon as the recipe ID is known, so it can
+ * run in parallel with the summary-doc listener instead of starting only
+ * after the listener's first snapshot arrives. Pass the result to
+ * `loadRecipeWithSummaryDoc`. */
+export function loadRecipeDetailSnapshot(userId: string, recipeId: string) {
+  return getDoc(recipeDetailRef(userId, recipeId));
+}
+
 export async function loadRecipeWithSummaryDoc(
   userId: string,
   recipeId: string,
   summarySnap: QueryDocumentSnapshot<DocumentData>,
+  detailSnapshotPromise?: ReturnType<typeof loadRecipeDetailSnapshot>,
 ): Promise<SavedRecipe> {
-  const detailSnapshot = await getDoc(recipeDetailRef(userId, recipeId));
+  const detailSnapshot = await (detailSnapshotPromise ?? loadRecipeDetailSnapshot(userId, recipeId));
   return assembleSavedRecipe(
     recipeId,
     summarySnap,

@@ -263,12 +263,16 @@ export function ImportRecipePanel({
       const activeUser = user ?? await ensureAnonymousUser();
       const recipeId = crypto.randomUUID();
       const imageDataURLs = await Promise.all(imageFiles.map(readImageAsDataURL));
-      const parsedImageRecipe = await parseRecipeFromImages(imageDataURLs);
-      let recipeData = parsedImageRecipe.recipe;
 
-      const uploadedImageURL = await uploadRecipeImage(activeUser.uid, recipeId, imageFiles[0]);
-      recipeData = { ...recipeData, imageURL: uploadedImageURL };
-      const themeSeedColors = await extractThemeSeedColorsWithTimeout(imageDataURLs[0]);
+      // Parsing, uploading, and theme extraction each only need the raw image
+      // data, not each other's output — run them concurrently instead of
+      // chaining, since parsing (the AI call) is the slow step.
+      const [parsedImageRecipe, uploadedImageURL, themeSeedColors] = await Promise.all([
+        parseRecipeFromImages(imageDataURLs),
+        uploadRecipeImage(activeUser.uid, recipeId, imageFiles[0]),
+        extractThemeSeedColorsWithTimeout(imageDataURLs[0]),
+      ]);
+      const recipeData = { ...parsedImageRecipe.recipe, imageURL: uploadedImageURL };
 
       savePendingImportDraft(recipeId, recipeData, "photo_upload", themeSeedColors);
       openDraft(recipeId);
