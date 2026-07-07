@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 const COVER_SLOT_HEIGHT_PX: Record<0 | 1, number> = { 0: 216, 1: 190 };
 
 export function RecipeCoverImage({
@@ -17,6 +19,15 @@ export function RecipeCoverImage({
 }) {
   const h = COVER_SLOT_HEIGHT_PX[ratioIndex];
   const wrapClass = `cp-recipe-card__image-wrap cp-recipe-card__image-wrap--ratio-${ratioIndex}`;
+  // Fade each cover in as its bytes arrive instead of letting it pop in mid-scroll.
+  // Reset synchronously during render (not an Effect) whenever the source changes
+  // (e.g. an error-recovery src swap) — see https://react.dev/learn/you-might-not-need-an-effect.
+  const [loaded, setLoaded] = useState(false);
+  const [loadedForSrc, setLoadedForSrc] = useState(coverSrc);
+  if (coverSrc !== loadedForSrc) {
+    setLoadedForSrc(coverSrc);
+    setLoaded(false);
+  }
 
   if (!coverSrc) {
     return (
@@ -38,10 +49,14 @@ export function RecipeCoverImage({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         alt={alt}
-        className="cp-recipe-card__image"
+        className={`cp-recipe-card__image ${loaded ? "is-loaded" : ""}`.trim()}
         decoding="async"
+        loading="lazy"
         onError={onError}
-        onLoad={onLoad}
+        onLoad={() => {
+          setLoaded(true);
+          onLoad?.();
+        }}
         src={coverSrc}
         style={{
           display: "block",
