@@ -2082,6 +2082,23 @@ html[data-theme="dark"] .cp-detail--page {
   --recipe-current-on-primary: var(--recipe-on-primary-dark, var(--recipe-current-on-primary, var(--cp-card)));
 }
 
+/* Applied for a moment right after a recipe's theme palette first resolves (e.g. once
+   extraction finishes on a fresh import), so the tint eases in instead of snapping. */
+.cp-detail--page.cp-detail--palette-fade,
+.cp-detail--page.cp-detail--palette-fade * {
+  transition:
+    background-color 650ms ease,
+    border-color 650ms ease,
+    box-shadow 650ms ease,
+    color 650ms ease,
+    fill 650ms ease;
+}
+
+html:has(.cp-detail--page.cp-detail--palette-fade) body,
+.cp-app-shell:has(.cp-detail--page.cp-detail--palette-fade) {
+  transition: background 650ms ease, color 650ms ease;
+}
+
 .cp-detail__topbar-sentinel {
   height: 1px;
   margin-bottom: -1px;

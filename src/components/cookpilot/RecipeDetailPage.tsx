@@ -851,6 +851,12 @@ export function RecipeDetailPage({
       // and is persisted by the first Save. Only write through for already-saved recipes.
       if (!isPendingDraft) {
         void updateThemeSeedColors(userId, recipeId, seed);
+      } else {
+        // Save reads themeSeedColors off editDraft, not selectedRecipe — keep it in sync
+        // so the extracted palette survives the review-and-save step of a fresh import.
+        setEditDraft((current) =>
+          current?.id === recipeId ? { ...current, themeSeedColors: seed } : current,
+        );
       }
     });
 
@@ -974,6 +980,21 @@ export function RecipeDetailPage({
     const seed = selectedRecipe?.themeSeedColors;
     return seed ? buildRecipePalette(seed) : null;
   }, [selectedRecipe?.themeSeedColors]);
+
+  // Briefly flag the moment a theme palette first resolves (e.g. right after extraction
+  // finishes on a fresh import) so the CSS can ease the tint in instead of snapping to it.
+  const [paletteJustArrived, setPaletteJustArrived] = useState(false);
+  const hadPaletteRef = useRef(false);
+  useEffect(() => {
+    const hasPalette = Boolean(recipePalette);
+    if (hasPalette && !hadPaletteRef.current) {
+      setPaletteJustArrived(true);
+      const timeout = window.setTimeout(() => setPaletteJustArrived(false), 700);
+      hadPaletteRef.current = true;
+      return () => window.clearTimeout(timeout);
+    }
+    hadPaletteRef.current = hasPalette;
+  }, [recipePalette]);
 
   function isEditQuotaExceededError(error: unknown) {
     const code = (error as { code?: string }).code;
@@ -1603,7 +1624,7 @@ export function RecipeDetailPage({
 
   return (
     <div
-      className={`cp-detail cp-detail--page${isEditingRecipe ? " cp-detail--editing" : ""}`.trim()}
+      className={`cp-detail cp-detail--page${isEditingRecipe ? " cp-detail--editing" : ""}${paletteJustArrived ? " cp-detail--palette-fade" : ""}`.trim()}
       style={recipePalette ? ({
         "--recipe-bg": recipePalette.background,
         "--recipe-bg-dark": recipePalette.backgroundDark,
