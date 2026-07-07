@@ -23,6 +23,10 @@ export function upstreamCoverRequestHeaders(target: URL): HeadersInit {
   } else if (host.includes("pinimg.com") || host.includes("pinterest.com")) {
     headers.Referer = "https://www.pinterest.com/";
     headers.Origin = "https://www.pinterest.com";
+  } else {
+    // Generic WordPress/CDN hotlink-protection rules commonly require a same-site
+    // Referer; without one some hosts 403 our server-side fetch even with a browser UA.
+    headers.Referer = `${target.protocol}//${target.hostname}/`;
   }
 
   return headers;
