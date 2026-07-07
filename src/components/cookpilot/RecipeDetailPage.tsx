@@ -70,6 +70,7 @@ import {
   decodeRecipeSummary,
   deleteRecipe,
   loadRecipePage,
+  loadRecipeDetailSnapshot,
   loadRecipeWithSummaryDoc,
   saveRecipe,
   updateRecipeDetailPreferences,
@@ -642,6 +643,9 @@ export function RecipeDetailPage({
     if (!user || isPendingDraft) return;
     detailInitializedRef.current = false;
     const userId = user.uid;
+    // Fire immediately so it runs in parallel with the summary listener below,
+    // instead of only starting once the listener's first snapshot arrives.
+    const detailSnapshotPromise = loadRecipeDetailSnapshot(userId, recipeId);
 
     const unsub = onSnapshot(
       doc(db, "users", userId, "recipes", recipeId),
@@ -654,7 +658,7 @@ export function RecipeDetailPage({
 
         if (!detailInitializedRef.current) {
           detailInitializedRef.current = true;
-          const recipe = await loadRecipeWithSummaryDoc(userId, recipeId, summarySnap);
+          const recipe = await loadRecipeWithSummaryDoc(userId, recipeId, summarySnap, detailSnapshotPromise);
           setSelectedRecipe(recipe);
           syncSavedRecipeToBrowseSessionCache(userId, recipe);
           setCheckedIngredientIndices(recipe.checkedIngredientIndices ?? []);

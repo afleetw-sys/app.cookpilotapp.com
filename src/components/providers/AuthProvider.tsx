@@ -197,6 +197,20 @@ async function updateUserSessionMetadata(user: User) {
   }
 }
 
+async function updateUserSessionMetadataAfterEnsuringDocument(user: User) {
+  try {
+    if (!isUserDocEnsured(user.uid)) {
+      await ensureUserDocument(
+        user,
+        user.isAnonymous ? "anonymous" : user.providerData[0]?.providerId ?? "password",
+      );
+    }
+    await updateUserSessionMetadata(user);
+  } catch (error) {
+    console.error("user session metadata preparation failed", error);
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -294,6 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
               rememberAuthenticatedSession(restoredUser);
             }
+            void updateUserSessionMetadataAfterEnsuringDocument(restoredUser);
             return;
           }
 
@@ -305,9 +320,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (delayedRestoredUser) {
               setUser(delayedRestoredUser);
               setStatus(delayedRestoredUser.isAnonymous ? "anonymous" : "authenticated");
-              if (!delayedRestoredUser.isAnonymous) {
+              if (delayedRestoredUser.isAnonymous) {
+                rememberAnonymousUid(delayedRestoredUser.uid);
+              } else {
                 rememberAuthenticatedSession(delayedRestoredUser);
               }
+              void updateUserSessionMetadataAfterEnsuringDocument(delayedRestoredUser);
               return;
             }
 
@@ -331,6 +349,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } else {
                 rememberAuthenticatedSession(recovered);
               }
+              void updateUserSessionMetadataAfterEnsuringDocument(recovered);
               return;
             }
             // Still no user — the anonymous account is truly gone.
@@ -349,20 +368,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           rememberAuthenticatedSession(nextUser);
           forgetAnonymousUid();
-          // Only track lastActive for real authenticated users — anonymous users
-          // have no persistent identity worth session-frequency tracking, and
-          // calling this on anon users caused spurious Firestore writes before
-          // their user document was guaranteed to exist.
-          void updateUserSessionMetadata(nextUser);
-          // Self-healing: if the Firestore write failed during a previous sign-in
-          // (auth record exists, user doc does not), recreate it. The localStorage
-          // flag ensures this only runs once per UID, not on every token refresh.
-          if (!isUserDocEnsured(nextUser.uid)) {
-            void ensureUserDocument(nextUser, nextUser.providerData[0]?.providerId ?? "password").catch(
-              (error) => console.error("ensureUserDocument recovery failed", error),
-            );
-          }
         }
+        void updateUserSessionMetadataAfterEnsuringDocument(nextUser);
       } finally {
         handlerRunning = false;
       }
@@ -384,6 +391,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         rememberAuthenticatedSession(currentUser);
       }
+      void updateUserSessionMetadataAfterEnsuringDocument(currentUser);
       return currentUser;
     }
 
@@ -409,6 +417,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         rememberAnonymousUid(anonUser.uid);
         setUser(anonUser);
         setStatus("anonymous");
+        await updateUserSessionMetadata(anonUser);
         return anonUser;
       })().finally(() => {
         pendingAnonSignIn = null;
