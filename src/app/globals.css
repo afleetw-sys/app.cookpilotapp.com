@@ -1665,6 +1665,12 @@ html[data-theme="dark"] .cp-recipe-card:hover {
   width: 100%;
   max-width: none;
   vertical-align: top;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.cp-recipe-card__image.is-loaded {
+  opacity: 1;
 }
 
 .cp-recipe-card__placeholder {

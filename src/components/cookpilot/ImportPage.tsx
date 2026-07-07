@@ -212,7 +212,8 @@ export function ImportRecipePanel({
 
       const fallbackNotice = recipeIsBlank(recipeData) ? URL_IMPORT_FALLBACK_NOTICE : null;
       if (fallbackNotice) {
-        await recordTerminalURLImportFailure({
+        // Best-effort telemetry — don't make the user wait on it to see their draft.
+        void recordTerminalURLImportFailure({
           url: trimmedURL,
           durationMs: Math.round(performance.now() - parseStartedAt),
           failureStep: "empty_recipe",
@@ -230,7 +231,8 @@ export function ImportRecipePanel({
     } catch (nextError) {
       console.error(nextError);
       if (shouldFallbackToManualDraft && fallbackURL) {
-        await recordTerminalURLImportFailure({
+        // Best-effort telemetry — don't make the user wait on it to see their draft.
+        void recordTerminalURLImportFailure({
           url: fallbackURL,
           durationMs: Math.round(performance.now() - parseStartedAt),
           failureStep: "url_parsing",

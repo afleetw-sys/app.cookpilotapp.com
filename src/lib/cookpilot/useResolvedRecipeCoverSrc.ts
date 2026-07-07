@@ -8,7 +8,6 @@ import {
   isFirebaseStorageURL,
   proxiedExternalCoverUrl,
   refreshRecipeCoverSrc,
-  resolveRecipeCoverSrc,
 } from "@/lib/cookpilot/resolveRecipeCoverUrl";
 
 type CoverLoadMode = "firebase" | "direct" | "proxy";
@@ -45,7 +44,8 @@ function initialCoverLoadState(key: string): CoverLoadState {
 /**
  * Resolves Firestore `imageURL` for `<img src>`.
  *
- * - Firebase: refresh signed URL via Storage SDK (tokens in Firestore expire).
+ * - Firebase: render the stored URL directly; only refresh via the Storage SDK
+ *   (tokens can go stale) if the image actually fails to load.
  * - External: browser direct first (same idea as iOS URLSession on device), proxy only as fallback.
  *   Do not set crossOrigin for display — many CDNs load in <img> but fail CORS checks.
  */
@@ -82,51 +82,18 @@ export function useResolvedRecipeCoverSrc(
       return;
     }
 
-    if (!isFirebaseStorageURL(stored)) {
-      logRecipeImageLoad(recipeId, "cover.directFirst");
-      return;
+    if (isFirebaseStorageURL(stored)) {
+      // The stored URL already carries a working download token minted when it was
+      // written (upload or CDN migration) — render it directly instead of paying for
+      // a getDownloadURL round trip per card on every mount. A grid of two dozen cards
+      // was firing two dozen concurrent Storage requests before the images had even
+      // started loading, competing with the actual image fetches for connections.
+      // If a token ever goes stale, handleImageError below refreshes it on demand.
+      loadModeRef.current = "firebase";
     }
 
-    if (cachedResolvedCoverSrc(loadKey)) {
-      // Already resolved this exact recipe/image in this session — no need to
-      // hit Firebase Storage again for a signed URL we already have.
-      loadModeRef.current = "firebase";
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      await authReady;
-      await auth.authStateReady();
-      if (cancelled) return;
-
-      if (!auth.currentUser) {
-        logRecipeImageLoad(recipeId, "cover.error.notAuthenticated");
-        return;
-      }
-
-      const fresh = await resolveRecipeCoverSrc(auth.currentUser.uid, recipeId, stored);
-      if (cancelled) return;
-      if (!fresh) {
-        logRecipeImageLoad(recipeId, "cover.resolveFailed");
-        return;
-      }
-
-      loadModeRef.current = "firebase";
-      logRecipeImageLoad(recipeId, "cover.firebaseResolvedURL");
-      cacheResolvedCoverSrc(loadKey, fresh);
-      setLoadState((current) =>
-        current.key === loadKey && current.resolvedSrc === fresh && !current.failed
-          ? current
-          : { failed: false, key: loadKey, resolvedSrc: fresh },
-      );
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [stored, recipeId, enabled, loadKey]);
+    logRecipeImageLoad(recipeId, "cover.directFirst");
+  }, [stored, recipeId, enabled]);
 
   const handleImageError = useCallback(() => {
     function updateActiveLoadState(update: Partial<Omit<CoverLoadState, "key">>) {
