@@ -139,11 +139,12 @@ export function IosAppBanner() {
 
     const title = recipe.recipe.title?.trim() || "Recipe";
     const shareId = newShareId();
+    const payload = buildShareLinkPayload(recipe.recipe, recipe.sourceURL);
     await commitShareLink({
       shareId,
       recipeTitle: title,
-      recipe: buildShareLinkPayload(recipe.recipe, recipe.sourceURL),
-      sourceURL: recipe.sourceURL ?? null,
+      recipe: payload,
+      sourceURL: payload.sourceURL,
       imageURL: recipe.recipe.imageURL ?? null,
     });
 
