@@ -88,7 +88,7 @@ import { proxiedExternalCoverUrl } from "@/lib/cookpilot/resolveRecipeCoverUrl";
 import { useResolvedRecipeCoverSrc } from "@/lib/cookpilot/useResolvedRecipeCoverSrc";
 import { queueRecipeDeletedToast } from "@/lib/cookpilot/recipeDeletedToast";
 import { requestAnonymousSyncPrompt } from "@/lib/cookpilot/anonymousSyncPrompt";
-import { editRecipe, commitShareLink, recordShareImport } from "@/lib/cookpilot/functions";
+import { editRecipe, commitShareLink, commitShareLinkAfterNativeShare, recordShareImport } from "@/lib/cookpilot/functions";
 import { buildShareLinkPayload, newShareId } from "@/lib/cookpilot/sharedRecipe";
 import { defaultAIEditSuggestions } from "@/lib/cookpilot/editSuggestions";
 import { knownTagsFromRecipes } from "@/lib/cookpilot/recipeBrowse";
@@ -1534,24 +1534,26 @@ export function RecipeDetailPage({
       const shareURL = `https://app.cookpilotapp.com/r/${shareId}`;
       const text = `Check out ${title} on CookPilot:\n${shareURL}`;
 
-      const commit = () =>
-        commitShareLink({
-          shareId,
-          recipeTitle: title,
-          recipe: payload,
-          sourceURL: selectedRecipe.sourceURL ?? null,
-          imageURL: selectedRecipe.recipe.imageURL ?? null,
-        });
+      const shareFields = {
+        shareId,
+        recipeTitle: title,
+        recipe: payload,
+        sourceURL: selectedRecipe.sourceURL ?? null,
+        imageURL: selectedRecipe.recipe.imageURL ?? null,
+      };
 
       if (navigator.share) {
-        // The doc must exist before the share sheet hands off the URL, but a
-        // cancelled share (AbortError) skips the commit, leaving no orphan doc.
+        // Nothing is written until the native share sheet actually completes —
+        // a cancelled share (AbortError) skips the commit, leaving no orphan doc.
         await navigator.share({ title, text, url: shareURL });
-        await commit();
+        // Handing off to another app (Messages, Mail, etc.) can suspend this tab
+        // mid-continuation, so this uses a keepalive fetch instead of the callable
+        // SDK — a plain request here can get silently dropped before it lands.
+        await commitShareLinkAfterNativeShare(shareFields);
         return;
       }
 
-      await commit();
+      await commitShareLink(shareFields);
       await navigator.clipboard.writeText(text);
       setShareStatus("Recipe link copied to clipboard.");
     } catch (error) {

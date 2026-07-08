@@ -1,5 +1,8 @@
 import { httpsCallable } from "firebase/functions";
+import { getToken } from "firebase/app-check";
 import { functions } from "@/lib/firebase/cloudFunctions";
+import { app, auth } from "@/lib/firebase/client";
+import { appCheck } from "@/lib/firebase/appCheck";
 import type { EditRecipeResponse, Ingredient, RecipeData, ShareLinkResult, SharedRecipePayload } from "@/lib/cookpilot/types";
 import type { ClientRecipeExtraction } from "@/lib/cookpilot/clientExtraction";
 import type { SocialPlatform } from "@/lib/cookpilot/socialPlatform";
@@ -290,6 +293,57 @@ export async function commitShareLink(params: {
     ...(params.imageURL ? { imageURL: params.imageURL } : {}),
   });
   return result.data;
+}
+
+const FUNCTIONS_REGION = process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_REGION || "us-central1";
+
+/**
+ * Same request as commitShareLink, sent with fetch's `keepalive: true` instead of
+ * going through the callable SDK. When navigator.share() hands off to another app
+ * (e.g. Messages), mobile browsers can suspend the tab mid-continuation, silently
+ * dropping a plain callable request before it reaches the server. keepalive lets
+ * the browser finish sending the request even if the page is torn down right after.
+ */
+export async function commitShareLinkAfterNativeShare(params: {
+  shareId: string;
+  recipeTitle: string;
+  recipe: SharedRecipePayload;
+  sourceURL?: string | null;
+  imageURL?: string | null;
+}): Promise<void> {
+  const projectId = app.options.projectId;
+  const url = `https://${FUNCTIONS_REGION}-${projectId}.cloudfunctions.net/commitShareLink`;
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const idToken = await auth.currentUser?.getIdToken();
+  if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+  if (appCheck) {
+    try {
+      headers["X-Firebase-AppCheck"] = (await getToken(appCheck, false)).token;
+    } catch (error) {
+      console.error("[ShareLink] Failed to attach App Check token", error);
+    }
+  }
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    keepalive: true,
+    body: JSON.stringify({
+      data: {
+        shareId: params.shareId,
+        recipeTitle: params.recipeTitle,
+        recipe: params.recipe,
+        ...(params.sourceURL ? { sourceURL: params.sourceURL } : {}),
+        ...(params.imageURL ? { imageURL: params.imageURL } : {}),
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const json = await response.json().catch(() => null);
+    throw new Error(json?.error?.message || `commitShareLink failed (${response.status})`);
+  }
 }
 
 /**
