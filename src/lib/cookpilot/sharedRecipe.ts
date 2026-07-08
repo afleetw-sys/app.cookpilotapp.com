@@ -97,12 +97,15 @@ export async function importLegacySharedRecipe(sourceURL: string): Promise<strin
 }
 
 export function buildShareLinkPayload(recipe: RecipeData, sourceURL?: string | null) {
+  // "photo_upload" is a local sentinel for "imported from a photo, no real
+  // source URL" (see RecipeDetailPage) — the server only accepts http(s) URLs.
+  const realSourceURL = sourceURL && sourceURL !== "photo_upload" ? sourceURL : null;
   const payload: SharedRecipePayload = {
     recipe: {
       ...recipe,
       localImagePath: null,
     },
-    sourceURL: sourceURL ?? null,
+    sourceURL: realSourceURL,
   };
 
   if (ingredientCount(payload.recipe) === 0 || instructionCount(payload.recipe) === 0) {
