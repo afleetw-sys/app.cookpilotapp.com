@@ -57,11 +57,15 @@ export function scaleIngredient(
 }
 
 export function scaleRecipe(recipe: RecipeData, servings: number): RecipeData {
-  const originalServings = recipe.servings;
-  if (!originalServings || originalServings <= 0 || servings <= 0) {
+  if (servings <= 0) {
     return recipe;
   }
 
+  // Recipes without a detected serving count (common for imports) are treated
+  // as a base of 4 servings, matching the iOS app's fallback, so the stepper
+  // still scales ingredients instead of no-op'ing.
+  const originalServings =
+    recipe.servings && recipe.servings > 0 ? recipe.servings : 4;
   const multiplier = servings / originalServings;
 
   return {
