@@ -1600,7 +1600,7 @@ export function RecipeDetailPage({
   const aiEditSuggestions = defaultAIEditSuggestions(baseRecipe, {
     sourceURL: selectedRecipe.sourceURL,
   });
-  const baseServings = baseRecipe.servings ?? 1;
+  const baseServings = baseRecipe.servings ?? 4;
   const currentServings = isEditingRecipe ? baseServings : servingsOverride ?? baseServings;
   const allScaledIngredients =
     displayedRecipe.ingredientSections.flatMap((section) => section.ingredients) ?? [];
