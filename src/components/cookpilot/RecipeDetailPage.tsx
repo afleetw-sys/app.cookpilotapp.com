@@ -1538,7 +1538,7 @@ export function RecipeDetailPage({
         shareId,
         recipeTitle: title,
         recipe: payload,
-        sourceURL: selectedRecipe.sourceURL ?? null,
+        sourceURL: payload.sourceURL,
         imageURL: selectedRecipe.recipe.imageURL ?? null,
       };
 
