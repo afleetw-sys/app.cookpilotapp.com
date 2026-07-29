@@ -397,6 +397,47 @@ function RecipeTagChip({
   );
 }
 
+function IngredientEditInput({
+  ingredient,
+  ariaLabel,
+  onChangeText,
+}: {
+  ingredient: Ingredient;
+  ariaLabel: string;
+  onChangeText: (raw: string) => void;
+}) {
+  // Keep the raw text the user is typing in local state. Deriving the input
+  // value straight from the parsed ingredient (parse -> display round-trip)
+  // trims/normalizes on every keystroke, which eats spaces and jumps the caret.
+  const canonical = ingredientDisplayLine(ingredient);
+  const [text, setText] = useState(canonical);
+  const [focused, setFocused] = useState(false);
+
+  // Sync with external changes (e.g. AI edits) only while the field is idle,
+  // so we never clobber what the user is actively typing.
+  useEffect(() => {
+    if (!focused) setText(canonical);
+  }, [canonical, focused]);
+
+  return (
+    <input
+      aria-label={ariaLabel}
+      className="cp-edit-row__input"
+      onChange={(event) => {
+        setText(event.target.value);
+        onChangeText(event.target.value);
+      }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        setText(ingredientDisplayLine(ingredient));
+      }}
+      placeholder="e.g. 2 cups flour, sifted"
+      value={text}
+    />
+  );
+}
+
 function SortableInstructionRow({
   instruction,
   onChangeText,
@@ -2092,11 +2133,11 @@ export function RecipeDetailPage({
                     <li key={ingredient.id}>
                       {isEditingRecipe && editDraft ? (
                         <div className="cp-edit-row cp-edit-row--ingredient">
-                          <input
-                            aria-label={`Ingredient ${globalIndex + 1}`}
-                            className="cp-edit-row__input"
-                            onChange={(event) => {
-                              const parsed = parseIngredientText(event.target.value);
+                          <IngredientEditInput
+                            ariaLabel={`Ingredient ${globalIndex + 1}`}
+                            ingredient={ingredient}
+                            onChangeText={(raw) => {
+                              const parsed = parseIngredientText(raw);
                               const updatedIngredient = { ...ingredient, ...parsed };
                               updateDraftIngredient(section.id, ingredient.id, (current) => ({
                                 ...current,
@@ -2108,8 +2149,6 @@ export function RecipeDetailPage({
                                   : current,
                               );
                             }}
-                            placeholder="e.g. 2 cups flour, sifted"
-                            value={ingredientDisplayLine(ingredient)}
                           />
                           <button
                             aria-label={`Ask AI about ingredient ${globalIndex + 1}`}
